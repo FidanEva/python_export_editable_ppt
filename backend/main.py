@@ -43,9 +43,14 @@ async def generate_ppt(
     background_tasks: BackgroundTasks,
     request: Request,
     excel_files: list[UploadFile] = File(...),
+    company_logo: UploadFile = File(...),
+    mediaeye_logo: UploadFile = File(...),
+    neurotime_logo: UploadFile = File(...),
+    competitor_logos: list[UploadFile] = File(None),
     positive_links: str = Form(None),
     negative_links: str = Form(None),
-    date: str = Form(...),
+    start_date: str = Form(...),
+    end_date: str = Form(...),
     company_name: str = Form(...)
 ):
     temp_files = []  # Keep track of all temporary files
@@ -67,6 +72,40 @@ async def generate_ppt(
             
             # Parse Excel data
             data_frames[file.filename.split('.')[0]] = parse_excel_data(file_path)
+
+        # Process logos
+        company_logo_path = "uploads/company_logo.png"
+        mediaeye_logo_path = "uploads/mediaeye_logo.png"
+        neurotime_logo_path = "uploads/neurotime_logo.png"
+        competitor_logo_paths = []
+
+        # Save company logo
+        with open(company_logo_path, "wb") as buffer:
+            content = await company_logo.read()
+            buffer.write(content)
+        temp_files.append(company_logo_path)
+
+        # Save MediaEye logo
+        with open(mediaeye_logo_path, "wb") as buffer:
+            content = await mediaeye_logo.read()
+            buffer.write(content)
+        temp_files.append(mediaeye_logo_path)
+
+        # Save NeuroTime logo
+        with open(neurotime_logo_path, "wb") as buffer:
+            content = await neurotime_logo.read()
+            buffer.write(content)
+        temp_files.append(neurotime_logo_path)
+
+        # Save competitor logos
+        if competitor_logos:
+            for i, logo in enumerate(competitor_logos):
+                logo_path = f"uploads/competitor_logo_{i}.png"
+                with open(logo_path, "wb") as buffer:
+                    content = await logo.read()
+                    buffer.write(content)
+                competitor_logo_paths.append(logo_path)
+                temp_files.append(logo_path)
 
         # Process post images
         positive_posts = []
@@ -110,8 +149,13 @@ async def generate_ppt(
         create_ppt(
             data_frames=data_frames,
             output_path=output_path,
-            date=date,
+            start_date=start_date,
+            end_date=end_date,
             company_name=company_name,
+            company_logo_path=company_logo_path,
+            mediaeye_logo_path=mediaeye_logo_path,
+            neurotime_logo_path=neurotime_logo_path,
+            competitor_logo_paths=competitor_logo_paths,
             positive_links=positive_links_list,
             negative_links=negative_links_list,
             positive_posts=positive_posts,

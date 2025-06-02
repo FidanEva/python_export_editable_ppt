@@ -21,7 +21,7 @@ SENTIMENT_COLORS = {
 }
 
 # Define slide background color
-SLIDE_BG_COLOR = RGBColor(240, 240, 240)  # Light gray
+SLIDE_BG_COLOR = RGBColor(230, 230, 230)  # Light gray
 
 # Define chart background color
 CHART_BG_COLOR = RGBColor(255, 255, 255)  # White
@@ -35,44 +35,180 @@ METRIC_ICONS = {
     'Total Views': '👁️'
 }
 
-def create_ppt(data_frames, output_path, date, company_name, positive_links=None, negative_links=None, positive_posts=None, negative_posts=None):
+def add_slide_header(slide, company_logo_path, start_date, end_date, title):
+    """Helper function to add a consistent header to slides"""
+    # Add header background
+    header = slide.shapes.add_shape(
+        MSO_SHAPE.RECTANGLE,
+        Inches(0), Inches(0),
+        Inches(10), Inches(0.8)
+    )
+    header.fill.solid()
+    header.fill.fore_color.rgb = CHART_BG_COLOR
+    
+    # Add company logo
+    if os.path.exists(company_logo_path):
+        img = slide.shapes.add_picture(
+            company_logo_path,
+            Inches(0.2), Inches(0.1),
+            height=Inches(0.6)
+        )
+    
+    # Add title
+    title_box = slide.shapes.add_textbox(Inches(3), Inches(0.1), Inches(4), Inches(0.6))
+    tf = title_box.text_frame
+    p = tf.add_paragraph()
+    p.text = title
+    p.font.size = Pt(16)
+    p.font.bold = True
+    p.alignment = PP_ALIGN.CENTER
+    
+    # Add date range
+    date_box = slide.shapes.add_textbox(Inches(7), Inches(0.1), Inches(2.5), Inches(0.6))
+    tf = date_box.text_frame
+    p = tf.add_paragraph()
+    p.text = f"{start_date} - {end_date}"
+    p.font.size = Pt(12)
+    p.alignment = PP_ALIGN.RIGHT
+    
+    # Add divider line
+    line = slide.shapes.add_shape(
+        MSO_SHAPE.RECTANGLE,
+        Inches(0), Inches(0.8),
+        Inches(10), Inches(0.02)
+    )
+    line.fill.solid()
+    line.fill.fore_color.rgb = RGBColor(0, 0, 0)
+
+def create_ppt(data_frames, output_path, start_date, end_date, company_name, company_logo_path, mediaeye_logo_path, neurotime_logo_path, competitor_logo_paths=None, positive_links=None, negative_links=None, positive_posts=None, negative_posts=None):
     try:
         logger.debug("Creating PowerPoint presentation")
         prs = Presentation()
         
-        # First slide - Title slide with date and company name
+        # First slide - Title slide with logos and text
         logger.debug("Creating title slide")
-        title_slide = prs.slides.add_slide(prs.slide_layouts[0])
-        title = title_slide.shapes.title
-        subtitle = title_slide.placeholders[1]
+        title_slide = prs.slides.add_slide(prs.slide_layouts[5])  # Blank layout
         
         # Set slide background
         background = title_slide.background
         fill = background.fill
         fill.solid()
         fill.fore_color.rgb = SLIDE_BG_COLOR
+
+        # Left side content
+        left = Inches(0.5)
+        top = Inches(0.5)
+        width = Inches(4.5)
         
-        title.text = f"Report for {company_name}"
-        title.text_frame.paragraphs[0].font.size = Pt(32)
-        subtitle.text = f"Date: {date}"
-        subtitle.text_frame.paragraphs[0].font.size = Pt(24)
+        # Add NeuroTime logo
+        if os.path.exists(neurotime_logo_path):
+            img = title_slide.shapes.add_picture(neurotime_logo_path, left, top, width=Inches(2))
+        
+        # Add text content
+        current_top = top + Inches(2.5)
+        
+        # Title text
+        title_box = title_slide.shapes.add_textbox(left, current_top, width, Inches(0.5))
+        tf = title_box.text_frame
+        p = tf.add_paragraph()
+        p.text = "MARKA VARLIĞININ MEDİA ÜZƏRİNDƏN QİYMƏTLƏNDİRİLMƏSİ"
+        p.font.size = Pt(24)
+        p.font.bold = True
+        current_top += Inches(0.7)
+        
+        # Divider line
+        line = title_slide.shapes.add_shape(MSO_SHAPE.RECTANGLE, left, current_top, width, Inches(0.02))
+        line.fill.solid()
+        line.fill.fore_color.rgb = RGBColor(0, 0, 0)
+        current_top += Inches(0.2)
+        
+        # Description text
+        desc_box = title_slide.shapes.add_textbox(left, current_top, width, Inches(0.5))
+        tf = desc_box.text_frame
+        p = tf.add_paragraph()
+        p.text = "Online/Sosial və ənənəvi media datalarının əsasında təhlil."
+        p.font.size = Pt(16)
+        current_top += Inches(0.7)
+        
+        # Divider line
+        line = title_slide.shapes.add_shape(MSO_SHAPE.RECTANGLE, left, current_top, width, Inches(0.02))
+        line.fill.solid()
+        line.fill.fore_color.rgb = RGBColor(0, 0, 0)
+        current_top += Inches(0.2)
+        
+        # Report type text
+        report_box = title_slide.shapes.add_textbox(left, current_top, width, Inches(0.5))
+        tf = report_box.text_frame
+        p = tf.add_paragraph()
+        p.text = "Analitik hesabat"
+        p.font.size = Pt(16)
+        current_top += Inches(0.7)
+        
+        # Date range
+        date_box = title_slide.shapes.add_textbox(left, current_top, width, Inches(0.5))
+        tf = date_box.text_frame
+        p = tf.add_paragraph()
+        p.text = f"{start_date} - {end_date}"
+        p.font.size = Pt(14)
+        
+        # Right side - Company logo
+        if os.path.exists(company_logo_path):
+            img = title_slide.shapes.add_picture(
+                company_logo_path,
+                Inches(5.5), Inches(2),
+                width=Inches(4)
+            )
 
-        # Add date to all slides
-        def add_date_to_slide(slide):
-            date_box = slide.shapes.add_textbox(Inches(0.5), Inches(0.2), Inches(2), Inches(0.5))
-            tf = date_box.text_frame
-            p = tf.add_paragraph()
-            p.text = f"Date: {date}"
-            p.font.size = Pt(12)
-            p.font.bold = True
+        # Second slide - Methodology description
+        logger.debug("Creating methodology slide")
+        method_slide = prs.slides.add_slide(prs.slide_layouts[5])
+                
+        # Add MediaEye logo on the left
+        if os.path.exists(mediaeye_logo_path):
+            img = method_slide.shapes.add_picture(
+                mediaeye_logo_path,
+                Inches(0.5), Inches(1.5),
+                width=Inches(4)
+            )
+        
+        # Add NeuroTime logo on the right top
+        if os.path.exists(neurotime_logo_path):
+            img = method_slide.shapes.add_picture(
+                neurotime_logo_path,
+                Inches(7), Inches(1.5),
+                width=Inches(2)
+            )
+        
+        # Add competitor logos in grid layout
+        if competitor_logo_paths:
+            grid_left = Inches(5)
+            grid_top = Inches(2)
+            logo_width = Inches(1.5)
+            logo_height = Inches(1.5)
+            logos_per_row = 4
+            spacing = Inches(0.2)
+            
+            for i, logo_path in enumerate(competitor_logo_paths):
+                if os.path.exists(logo_path):
+                    row = i // logos_per_row
+                    col = i % logos_per_row
+                    left = grid_left + (logo_width + spacing) * col
+                    top = grid_top + (logo_height + spacing) * row
+                    
+                    img = method_slide.shapes.add_picture(
+                        logo_path,
+                        left, top,
+                        width=logo_width,
+                        height=logo_height
+                    )
 
-        # Second slide - Multiline chart and donut chart
-        logger.debug("Creating second slide with charts")
-        slide2 = prs.slides.add_slide(prs.slide_layouts[5])
-        add_date_to_slide(slide2)
+        # Third slide - Multiline chart and donut chart
+        logger.debug("Creating third slide with charts")
+        slide3 = prs.slides.add_slide(prs.slide_layouts[5])
+        add_slide_header(slide3, company_logo_path, start_date, end_date, "Xəbərlərin analizi")
         
         # Set slide background
-        background = slide2.background
+        background = slide3.background
         fill = background.fill
         fill.solid()
         fill.fore_color.rgb = SLIDE_BG_COLOR
@@ -80,12 +216,12 @@ def create_ppt(data_frames, output_path, date, company_name, positive_links=None
         # Add positive links above multiline chart
         if positive_links:
             left = Inches(0.5)
-            top = Inches(0.5)
+            top = Inches(1)
             width = Inches(4.5)
             height = Inches(0.4)
             
             for i, link in enumerate(positive_links):
-                link_box = slide2.shapes.add_textbox(left, top + (height * i), width, height)
+                link_box = slide3.shapes.add_textbox(left, top + (height * i), width, height)
                 tf = link_box.text_frame
                 p = tf.add_paragraph()
                 p.text = f"🔗 {link}"
@@ -98,12 +234,12 @@ def create_ppt(data_frames, output_path, date, company_name, positive_links=None
         # Add negative links above donut chart
         if negative_links:
             left = Inches(5.5)
-            top = Inches(0.5)
+            top = Inches(1)
             width = Inches(4.5)
             height = Inches(0.4)
             
             for i, link in enumerate(negative_links):
-                link_box = slide2.shapes.add_textbox(left, top + (height * i), width, height)
+                link_box = slide3.shapes.add_textbox(left, top + (height * i), width, height)
                 tf = link_box.text_frame
                 p = tf.add_paragraph()
                 p.text = f"🔗 {link}"
@@ -129,7 +265,7 @@ def create_ppt(data_frames, output_path, date, company_name, positive_links=None
         sentiment_counts = get_sentiment_counts(combined_data)
         
         # Add chart titles
-        title_box = slide2.shapes.add_textbox(Inches(0.5), Inches(0.8), Inches(4.5), Inches(0.3))
+        title_box = slide3.shapes.add_textbox(Inches(0.5), Inches(1.3), Inches(4.5), Inches(0.3))
         tf = title_box.text_frame
         p = tf.add_paragraph()
         p.text = "Sentiment Trend Over Time"
@@ -137,7 +273,7 @@ def create_ppt(data_frames, output_path, date, company_name, positive_links=None
         p.font.bold = True
         p.alignment = PP_ALIGN.CENTER
 
-        title_box = slide2.shapes.add_textbox(Inches(5.5), Inches(0.8), Inches(4.5), Inches(0.3))
+        title_box = slide3.shapes.add_textbox(Inches(5.5), Inches(1.3), Inches(4.5), Inches(0.3))
         tf = title_box.text_frame
         p = tf.add_paragraph()
         p.text = "Overall Sentiment Distribution"
@@ -155,8 +291,8 @@ def create_ppt(data_frames, output_path, date, company_name, positive_links=None
             if sentiment in sentiment_data.columns:
                 chart_data.add_series(series_name, sentiment_data[sentiment].tolist())
         
-        x, y, cx, cy = Inches(0.5), Inches(1.2), Inches(4.5), Inches(4)
-        chart = slide2.shapes.add_chart(XL_CHART_TYPE.LINE, x, y, cx, cy, chart_data).chart
+        x, y, cx, cy = Inches(0.5), Inches(1.7), Inches(4.5), Inches(4)
+        chart = slide3.shapes.add_chart(XL_CHART_TYPE.LINE, x, y, cx, cy, chart_data).chart
         chart.has_legend = True
         chart.legend.position = XL_LEGEND_POSITION.BOTTOM
         chart.legend.font.size = Pt(10)
@@ -191,8 +327,8 @@ def create_ppt(data_frames, output_path, date, company_name, positive_links=None
             sentiment_counts.get(-1, 0)
         ])
         
-        x, y, cx, cy = Inches(5.5), Inches(1.2), Inches(4.5), Inches(4)
-        donut = slide2.shapes.add_chart(XL_CHART_TYPE.DOUGHNUT, x, y, cx, cy, donut_data).chart
+        x, y, cx, cy = Inches(5.5), Inches(1.7), Inches(4.5), Inches(4)
+        donut = slide3.shapes.add_chart(XL_CHART_TYPE.DOUGHNUT, x, y, cx, cy, donut_data).chart
         donut.has_legend = True
         donut.legend.position = XL_LEGEND_POSITION.BOTTOM
         donut.legend.font.size = Pt(10)
@@ -210,12 +346,13 @@ def create_ppt(data_frames, output_path, date, company_name, positive_links=None
             point.data_label.font.bold = True
             point.data_label.number_format = '#,##0'
         
-        # Third slide - Vertical multibar chart
+        # Fourth slide - Vertical multibar chart
         logger.debug("Creating third slide with vertical multibar chart")
-        slide3 = prs.slides.add_slide(prs.slide_layouts[5])
-        
+        slide4 = prs.slides.add_slide(prs.slide_layouts[5])
+        add_slide_header(slide4, company_logo_path, start_date, end_date, "Xəbərlərin analizi")
+
         # Set slide background
-        background = slide3.background
+        background = slide4.background
         fill = background.fill
         fill.solid()
         fill.fore_color.rgb = SLIDE_BG_COLOR
@@ -232,7 +369,7 @@ def create_ppt(data_frames, output_path, date, company_name, positive_links=None
                 chart_data.add_series(series_name, company_sentiments[sentiment].tolist())
         
         x, y, cx, cy = Inches(0.5), Inches(1), Inches(9), Inches(5)
-        chart = slide3.shapes.add_chart(XL_CHART_TYPE.COLUMN_CLUSTERED, x, y, cx, cy, chart_data).chart
+        chart = slide4.shapes.add_chart(XL_CHART_TYPE.COLUMN_CLUSTERED, x, y, cx, cy, chart_data).chart
         chart.has_legend = True
         chart.legend.position = XL_LEGEND_POSITION.BOTTOM
         chart.legend.font.size = Pt(10)
@@ -257,12 +394,13 @@ def create_ppt(data_frames, output_path, date, company_name, positive_links=None
             series.format.fill.solid()
             series.format.fill.fore_color.rgb = SENTIMENT_COLORS[list(SENTIMENT_COLORS.keys())[i]]
         
-        # Fourth slide - Author count horizontal bar chart
+        # Fifth slide - Author count horizontal bar chart
         logger.debug("Creating fourth slide with author count chart")
-        slide4 = prs.slides.add_slide(prs.slide_layouts[5])
-        
+        slide5 = prs.slides.add_slide(prs.slide_layouts[5])
+        add_slide_header(slide5, company_logo_path, start_date, end_date, "Xəbər saylarının saytlar üzərindən bölgüsü")
+
         # Set slide background
-        background = slide4.background
+        background = slide5.background
         fill = background.fill
         fill.solid()
         fill.fore_color.rgb = SLIDE_BG_COLOR
@@ -275,7 +413,7 @@ def create_ppt(data_frames, output_path, date, company_name, positive_links=None
         chart_data.add_series('Post Count', author_data.values.tolist())
         
         x, y, cx, cy = Inches(0.5), Inches(1), Inches(9), Inches(5)
-        chart = slide4.shapes.add_chart(XL_CHART_TYPE.BAR_CLUSTERED, x, y, cx, cy, chart_data).chart
+        chart = slide5.shapes.add_chart(XL_CHART_TYPE.BAR_CLUSTERED, x, y, cx, cy, chart_data).chart
         chart.has_legend = False
         
         # Set chart background and formatting
@@ -299,12 +437,13 @@ def create_ppt(data_frames, output_path, date, company_name, positive_links=None
             series.format.fill.solid()
             series.format.fill.fore_color.rgb = RGBColor(0, 112, 192)  # Blue color
         
-        # Fifth slide - Facebook metrics and sentiment analysis
+        # Sixth slide - Facebook metrics and sentiment analysis
         logger.debug("Creating fifth slide with Facebook metrics")
-        slide5 = prs.slides.add_slide(prs.slide_layouts[5])
-        
+        slide6 = prs.slides.add_slide(prs.slide_layouts[5])
+        add_slide_header(slide6, company_logo_path, start_date, end_date, "Facebook postlarının analizi")
+
         # Set slide background
-        background = slide5.background
+        background = slide6.background
         fill = background.fill
         fill.solid()
         fill.fore_color.rgb = SLIDE_BG_COLOR
@@ -331,7 +470,7 @@ def create_ppt(data_frames, output_path, date, company_name, positive_links=None
             
             for i, (metric, value) in enumerate(metrics.items()):
                 # Add red background shape
-                bg_shape = slide5.shapes.add_shape(
+                bg_shape = slide6.shapes.add_shape(
                     MSO_SHAPE.ROUNDED_RECTANGLE,
                     left, top + (height + spacing) * i, width, height
                 )
@@ -339,7 +478,7 @@ def create_ppt(data_frames, output_path, date, company_name, positive_links=None
                 bg_shape.fill.fore_color.rgb = RGBColor(255, 0, 0)
                 
                 # Add text box with icon
-                txBox = slide5.shapes.add_textbox(
+                txBox = slide6.shapes.add_textbox(
                     left + Inches(0.1), 
                     top + (height + spacing) * i + Inches(0.1), 
                     width - Inches(0.2), 
@@ -368,7 +507,7 @@ def create_ppt(data_frames, output_path, date, company_name, positive_links=None
             ])
             
             x, y, cx, cy = Inches(3), Inches(1), Inches(3), Inches(3)
-            donut = slide5.shapes.add_chart(XL_CHART_TYPE.DOUGHNUT, x, y, cx, cy, donut_data).chart
+            donut = slide6.shapes.add_chart(XL_CHART_TYPE.DOUGHNUT, x, y, cx, cy, donut_data).chart
             donut.has_legend = True
             donut.legend.position = XL_LEGEND_POSITION.BOTTOM
             donut.legend.font.size = Pt(10)
@@ -392,7 +531,7 @@ def create_ppt(data_frames, output_path, date, company_name, positive_links=None
                     chart_data.add_series(series_name, sentiment_by_date[sentiment].tolist())
             
             x, y, cx, cy = Inches(6), Inches(1), Inches(3), Inches(3)
-            chart = slide5.shapes.add_chart(XL_CHART_TYPE.LINE, x, y, cx, cy, chart_data).chart
+            chart = slide6.shapes.add_chart(XL_CHART_TYPE.LINE, x, y, cx, cy, chart_data).chart
             chart.has_legend = True
             chart.legend.position = XL_LEGEND_POSITION.BOTTOM
             chart.legend.font.size = Pt(10)
@@ -418,7 +557,7 @@ def create_ppt(data_frames, output_path, date, company_name, positive_links=None
                     chart_data.add_series(series_name, company_sentiments[sentiment].tolist())
             
             x, y, cx, cy = Inches(3), Inches(4), Inches(6), Inches(3)
-            chart = slide5.shapes.add_chart(XL_CHART_TYPE.COLUMN_CLUSTERED, x, y, cx, cy, chart_data).chart
+            chart = slide6.shapes.add_chart(XL_CHART_TYPE.COLUMN_CLUSTERED, x, y, cx, cy, chart_data).chart
             chart.has_legend = True
             chart.legend.position = XL_LEGEND_POSITION.BOTTOM
             chart.legend.font.size = Pt(10)
@@ -443,12 +582,13 @@ def create_ppt(data_frames, output_path, date, company_name, positive_links=None
                 series.format.fill.solid()
                 series.format.fill.fore_color.rgb = SENTIMENT_COLORS[list(SENTIMENT_COLORS.keys())[i]]
         
-        # Sixth slide - Facebook metrics table
+        # Seventh slide - Facebook metrics table
         logger.debug("Creating sixth slide with Facebook metrics table")
-        slide6 = prs.slides.add_slide(prs.slide_layouts[5])
-        
+        slide7 = prs.slides.add_slide(prs.slide_layouts[5])
+        add_slide_header(slide7, company_logo_path, start_date, end_date, "Bankların rəsmi Facebook səhifələrinin analizi")
+
         # Set slide background
-        background = slide6.background
+        background = slide7.background
         fill = background.fill
         fill.solid()
         fill.fore_color.rgb = SLIDE_BG_COLOR
@@ -483,7 +623,7 @@ def create_ppt(data_frames, output_path, date, company_name, positive_links=None
             width = Inches(9)
             height = Inches(5)
             
-            table = slide6.shapes.add_table(rows, cols, left, top, width, height).table
+            table = slide7.shapes.add_table(rows, cols, left, top, width, height).table
             
             # Set column widths
             table.columns[0].width = Inches(2)  # Company
@@ -528,12 +668,13 @@ def create_ppt(data_frames, output_path, date, company_name, positive_links=None
                         cell.fill.solid()
                         cell.fill.fore_color.rgb = RGBColor(255, 255, 255)  # White
         
-        # Seventh slide - Linkedin sentiment analysis
+        # Eigthth slide - Linkedin sentiment analysis
         logger.debug("Creating seventh slide with Linkedin sentiment analysis")
-        slide7 = prs.slides.add_slide(prs.slide_layouts[5])
-        
+        slide8 = prs.slides.add_slide(prs.slide_layouts[5])
+        add_slide_header(slide8, company_logo_path, start_date, end_date, "Linkedln postlarının analizi")
+
         # Set slide background
-        background = slide7.background
+        background = slide8.background
         fill = background.fill
         fill.solid()
         fill.fore_color.rgb = SLIDE_BG_COLOR
@@ -554,7 +695,7 @@ def create_ppt(data_frames, output_path, date, company_name, positive_links=None
                 ])
                 
                 x, y, cx, cy = Inches(0.5), Inches(1), Inches(4), Inches(4)
-                donut = slide7.shapes.add_chart(XL_CHART_TYPE.DOUGHNUT, x, y, cx, cy, donut_data).chart
+                donut = slide8.shapes.add_chart(XL_CHART_TYPE.DOUGHNUT, x, y, cx, cy, donut_data).chart
                 donut.has_legend = True
                 donut.legend.position = XL_LEGEND_POSITION.BOTTOM
                 donut.legend.font.size = Pt(10)
@@ -578,7 +719,7 @@ def create_ppt(data_frames, output_path, date, company_name, positive_links=None
                         chart_data.add_series(series_name, sentiment_by_date[sentiment].tolist())
                 
                 x, y, cx, cy = Inches(5), Inches(1), Inches(4.5), Inches(4)
-                chart = slide7.shapes.add_chart(XL_CHART_TYPE.LINE, x, y, cx, cy, chart_data).chart
+                chart = slide8.shapes.add_chart(XL_CHART_TYPE.LINE, x, y, cx, cy, chart_data).chart
                 chart.has_legend = True
                 chart.legend.position = XL_LEGEND_POSITION.BOTTOM
                 chart.legend.font.size = Pt(10)
@@ -615,7 +756,7 @@ def create_ppt(data_frames, output_path, date, company_name, positive_links=None
                         chart_data.add_series(series_name, company_sentiments[sentiment].tolist())
 
                 x, y, cx, cy = Inches(0.5), Inches(5), Inches(9), Inches(3)
-                chart = slide7.shapes.add_chart(XL_CHART_TYPE.COLUMN_CLUSTERED, x, y, cx, cy, chart_data).chart
+                chart = slide8.shapes.add_chart(XL_CHART_TYPE.COLUMN_CLUSTERED, x, y, cx, cy, chart_data).chart
                 chart.has_legend = True
                 chart.legend.position = XL_LEGEND_POSITION.BOTTOM
                 chart.legend.font.size = Pt(10)
@@ -643,8 +784,10 @@ def create_ppt(data_frames, output_path, date, company_name, positive_links=None
             else:
                 logger.warning(f"No Linkedin data found for company: {company_name}")
         
-        # Eighth slide - Positive and Negative Postsif positive_posts or negative_posts:
-        slide8 = prs.slides.add_slide(prs.slide_layouts[5])
+        # Ninth slide - Positive and Negative Postsif positive_posts or negative_posts:
+        slide9 = prs.slides.add_slide(prs.slide_layouts[5])
+        add_slide_header(slide9, company_logo_path, start_date, end_date, "Sosial media postlarının analizi")
+
         image_width = Inches(2)
         vertical_spacing = Inches(0.05)
         caption_height = Inches(0.35)
@@ -706,10 +849,10 @@ def create_ppt(data_frames, output_path, date, company_name, positive_links=None
 
         # Apply layout for each group
         if negative_posts:
-            layout_posts(slide8, negative_posts[:3], group_center_x=Inches(2.25))  # left half
+            layout_posts(slide9, negative_posts[:3], group_center_x=Inches(2.25))  # left half
 
         if positive_posts:
-            layout_posts(slide8, positive_posts[:3], group_center_x=Inches(7))  # right half
+            layout_posts(slide9, positive_posts[:3], group_center_x=Inches(7))  # right half
 
 
         logger.debug("Saving PowerPoint file")
