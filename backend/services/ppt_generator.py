@@ -9,6 +9,7 @@ from pptx.enum.dml import MSO_THEME_COLOR
 from services.excel_parser import get_sentiment_data, get_sentiment_counts, get_company_sentiment_counts
 import logging
 import pandas as pd
+import os
 
 logger = logging.getLogger(__name__)
 
@@ -34,7 +35,7 @@ METRIC_ICONS = {
     'Total Views': '👁️'
 }
 
-def create_ppt(data_frames, output_path, date, company_name):
+def create_ppt(data_frames, output_path, date, company_name, positive_links=None, negative_links=None, positive_posts=None, negative_posts=None):
     try:
         logger.debug("Creating PowerPoint presentation")
         prs = Presentation()
@@ -55,17 +56,63 @@ def create_ppt(data_frames, output_path, date, company_name):
         title.text_frame.paragraphs[0].font.size = Pt(32)
         subtitle.text = f"Date: {date}"
         subtitle.text_frame.paragraphs[0].font.size = Pt(24)
-        
+
+        # Add date to all slides
+        def add_date_to_slide(slide):
+            date_box = slide.shapes.add_textbox(Inches(0.5), Inches(0.2), Inches(2), Inches(0.5))
+            tf = date_box.text_frame
+            p = tf.add_paragraph()
+            p.text = f"Date: {date}"
+            p.font.size = Pt(12)
+            p.font.bold = True
+
         # Second slide - Multiline chart and donut chart
         logger.debug("Creating second slide with charts")
         slide2 = prs.slides.add_slide(prs.slide_layouts[5])
+        add_date_to_slide(slide2)
         
         # Set slide background
         background = slide2.background
         fill = background.fill
         fill.solid()
         fill.fore_color.rgb = SLIDE_BG_COLOR
-        
+
+        # Add positive links above multiline chart
+        if positive_links:
+            left = Inches(0.5)
+            top = Inches(0.5)
+            width = Inches(4.5)
+            height = Inches(0.4)
+            
+            for i, link in enumerate(positive_links):
+                link_box = slide2.shapes.add_textbox(left, top + (height * i), width, height)
+                tf = link_box.text_frame
+                p = tf.add_paragraph()
+                p.text = f"🔗 {link}"
+                p.font.size = Pt(8)
+                p.font.color.rgb = RGBColor(0, 112, 192)  # Blue color
+                p.alignment = PP_ALIGN.LEFT
+                r = p.runs[0]
+                r.hyperlink.address = link
+
+        # Add negative links above donut chart
+        if negative_links:
+            left = Inches(5.5)
+            top = Inches(0.5)
+            width = Inches(4.5)
+            height = Inches(0.4)
+            
+            for i, link in enumerate(negative_links):
+                link_box = slide2.shapes.add_textbox(left, top + (height * i), width, height)
+                tf = link_box.text_frame
+                p = tf.add_paragraph()
+                p.text = f"🔗 {link}"
+                p.font.size = Pt(8)
+                p.font.color.rgb = RGBColor(246, 1, 64)  # Red color
+                p.alignment = PP_ALIGN.LEFT
+                r = p.runs[0]
+                r.hyperlink.address = link
+
         # Get data from combined_sources
         logger.debug("Processing combined sources data")
         if 'combined_sources' not in data_frames:
@@ -75,18 +122,28 @@ def create_ppt(data_frames, output_path, date, company_name):
             raise ValueError("News sheet is missing in combined_sources Excel file")
         
         combined_data = data_frames['combined_sources']['News']
-        # Ensure 'Day' is datetime for sorting (optional)
         combined_data['Day'] = pd.to_datetime(combined_data['Day'])
-
-        # Filter for the company if needed
         company_data = combined_data[combined_data['Company'] == company_name]
-
-        # Group by 'Day' and 'Sentiment'
         sentiment_data = company_data.groupby(['Day', 'Sentiment']).size().unstack(fill_value=0)
-
-        # Sort by date to keep x-axis ordered
         sentiment_data = sentiment_data.sort_index()
         sentiment_counts = get_sentiment_counts(combined_data)
+        
+        # Add chart titles
+        title_box = slide2.shapes.add_textbox(Inches(0.5), Inches(0.8), Inches(4.5), Inches(0.3))
+        tf = title_box.text_frame
+        p = tf.add_paragraph()
+        p.text = "Sentiment Trend Over Time"
+        p.font.size = Pt(14)
+        p.font.bold = True
+        p.alignment = PP_ALIGN.CENTER
+
+        title_box = slide2.shapes.add_textbox(Inches(5.5), Inches(0.8), Inches(4.5), Inches(0.3))
+        tf = title_box.text_frame
+        p = tf.add_paragraph()
+        p.text = "Overall Sentiment Distribution"
+        p.font.size = Pt(14)
+        p.font.bold = True
+        p.alignment = PP_ALIGN.CENTER
         
         # Create multiline chart
         logger.debug("Creating multiline chart")
@@ -98,7 +155,7 @@ def create_ppt(data_frames, output_path, date, company_name):
             if sentiment in sentiment_data.columns:
                 chart_data.add_series(series_name, sentiment_data[sentiment].tolist())
         
-        x, y, cx, cy = Inches(0.5), Inches(1), Inches(4.5), Inches(4)
+        x, y, cx, cy = Inches(0.5), Inches(1.2), Inches(4.5), Inches(4)
         chart = slide2.shapes.add_chart(XL_CHART_TYPE.LINE, x, y, cx, cy, chart_data).chart
         chart.has_legend = True
         chart.legend.position = XL_LEGEND_POSITION.BOTTOM
@@ -134,7 +191,7 @@ def create_ppt(data_frames, output_path, date, company_name):
             sentiment_counts.get(-1, 0)
         ])
         
-        x, y, cx, cy = Inches(5.5), Inches(1), Inches(4.5), Inches(4)
+        x, y, cx, cy = Inches(5.5), Inches(1.2), Inches(4.5), Inches(4)
         donut = slide2.shapes.add_chart(XL_CHART_TYPE.DOUGHNUT, x, y, cx, cy, donut_data).chart
         donut.has_legend = True
         donut.legend.position = XL_LEGEND_POSITION.BOTTOM
@@ -143,10 +200,15 @@ def create_ppt(data_frames, output_path, date, company_name):
         # Set chart background
         donut.chart_style = 2  # White background
         
-        # Set colors for donut chart
+        # Set colors for donut chart and add data labels
         for i, point in enumerate(donut.series[0].points):
             point.format.fill.solid()
             point.format.fill.fore_color.rgb = SENTIMENT_COLORS[list(SENTIMENT_COLORS.keys())[i]]
+            # Add data label
+            point.has_data_label = True
+            point.data_label.font.size = Pt(10)
+            point.data_label.font.bold = True
+            point.data_label.number_format = '#,##0'
         
         # Third slide - Vertical multibar chart
         logger.debug("Creating third slide with vertical multibar chart")
@@ -581,6 +643,75 @@ def create_ppt(data_frames, output_path, date, company_name):
             else:
                 logger.warning(f"No Linkedin data found for company: {company_name}")
         
+        # Eighth slide - Positive and Negative Postsif positive_posts or negative_posts:
+        slide8 = prs.slides.add_slide(prs.slide_layouts[5])
+        image_width = Inches(2)
+        vertical_spacing = Inches(0.05)
+        caption_height = Inches(0.35)
+        group_top = Inches(1)
+        max_group_height = Inches(5.5)
+
+        def add_post(slide, post, left, top):
+            if not os.path.exists(post["image_path"]):
+                return 0
+
+            # Add image and get actual height
+            img = slide.shapes.add_picture(post["image_path"], left, top, width=image_width)
+            img_height = img.height / 914400
+
+            # Link
+            img.click_action.hyperlink.address = post["link"]
+
+            # Styling
+            img.line.color.rgb = RGBColor(200, 200, 200)
+            img.shadow.inherit = False
+            img.shadow.blur_radius = 5000
+
+            # Caption
+            caption_top = top + Inches(img_height)  + Inches(0.05)
+            caption_box = slide.shapes.add_textbox(left, caption_top, image_width, caption_height)
+            tf = caption_box.text_frame
+            p = tf.paragraphs[0]
+            p.text = post.get("caption", "🔗 Click to view post")
+            p.font.size = Pt(10)
+            p.alignment = PP_ALIGN.CENTER
+            p.font.color.rgb = RGBColor(80, 80, 80)
+
+            return Inches(img_height) + caption_height + vertical_spacing
+
+        def layout_posts(slide, posts, group_center_x):
+            count = len(posts)
+            positions = []
+
+            if count == 1:
+                positions.append((group_center_x - image_width / 2, group_top + Inches(2.5)))
+            elif count == 2:
+                positions.append((group_center_x - image_width / 2, group_top + Inches(0.5)))  # top
+                positions.append((group_center_x - image_width / 2, group_top + Inches(3)))  # bottom
+            elif count == 3:
+                # Top row (two side by side)
+                spacing_x = Inches(0.3)
+                left1 = group_center_x - image_width - spacing_x / 2
+                left2 = group_center_x + spacing_x / 2
+                top1 = group_top + Inches(0.5)
+                positions.append((left1, top1))
+                positions.append((left2, top1))
+                # Centered below
+                center_x = group_center_x - image_width / 2
+                positions.append((center_x, group_top + Inches(3)))
+
+            # Add posts
+            for post, (left, top) in zip(posts, positions):
+                add_post(slide, post, left, top)
+
+        # Apply layout for each group
+        if negative_posts:
+            layout_posts(slide8, negative_posts[:3], group_center_x=Inches(2.25))  # left half
+
+        if positive_posts:
+            layout_posts(slide8, positive_posts[:3], group_center_x=Inches(7))  # right half
+
+
         logger.debug("Saving PowerPoint file")
         prs.save(output_path)
         logger.debug("PowerPoint file saved successfully")
