@@ -9,6 +9,7 @@ from services.excel_parser import get_sentiment_counts, get_company_sentiment_co
 import logging
 import pandas as pd
 import os
+from PIL import Image
 
 logger = logging.getLogger(__name__)
 
@@ -35,85 +36,115 @@ METRIC_ICONS = {
 
 def add_slide_header(slide, company_logo_path, start_date, end_date, title):
     """Helper function to add a consistent header to slides"""
-    # Add header background
+
+    # Set constants
+    SLIDE_WIDTH_INCHES = 13.33
+    HEADER_HEIGHT = 0.8
+
+    # Add header background with SLIDE_BG_COLOR
     header = slide.shapes.add_shape(
         MSO_SHAPE.RECTANGLE,
         Inches(0), Inches(0),
-        Inches(10), Inches(0.8)
+        Inches(SLIDE_WIDTH_INCHES), Inches(HEADER_HEIGHT)
     )
-    
-    # Add company logo (smaller size)
+    header.fill.solid()
+    header.fill.fore_color.rgb = SLIDE_BG_COLOR
+    header.line.fill.background()  # Remove border
+
+    # Add company logo (a bit lower)
     if os.path.exists(company_logo_path):
-        img = slide.shapes.add_picture(
+        slide.shapes.add_picture(
             company_logo_path,
-            Inches(0.2), Inches(0.1),
+            Inches(0.2), Inches(0.2),  # moved slightly lower
             height=Inches(0.4)
         )
-    
-    # Add title with statistics icon
-    title_box = slide.shapes.add_textbox(Inches(3), Inches(0.1), Inches(4), Inches(0.6))
+
+    # Add title in the center
+    title_box = slide.shapes.add_textbox(
+        Inches((SLIDE_WIDTH_INCHES - 6) / 2), Inches(0.2),
+        Inches(6), Inches(0.6)
+    )
     tf = title_box.text_frame
-    p = tf.add_paragraph()
+    tf.clear()
+    p = tf.paragraphs[0]
     p.text = f"📊 {title}"
     p.font.size = Pt(16)
     p.font.bold = True
     p.alignment = PP_ALIGN.CENTER
     p.font.color.rgb = HEADER_TEXT_COLOR
-    
-    # Add date range with calendar icon
-    date_box = slide.shapes.add_textbox(Inches(7), Inches(0.1), Inches(2.5), Inches(0.6))
+
+    # Add date on the far right
+    date_box = slide.shapes.add_textbox(
+        Inches(SLIDE_WIDTH_INCHES - 3), Inches(0.2),
+        Inches(2.8), Inches(0.6)
+    )
     tf = date_box.text_frame
-    p = tf.add_paragraph()
+    tf.clear()
+    p = tf.paragraphs[0]
     p.text = f"📅 {start_date} - {end_date}"
     p.font.size = Pt(12)
     p.alignment = PP_ALIGN.RIGHT
     p.font.color.rgb = HEADER_TEXT_COLOR
-    
+
     # Add divider line
     line = slide.shapes.add_shape(
         MSO_SHAPE.RECTANGLE,
-        Inches(0), Inches(0.8),
-        Inches(10), Inches(0.02)
+        Inches(0), Inches(HEADER_HEIGHT),
+        Inches(SLIDE_WIDTH_INCHES), Inches(0.02)
     )
     line.fill.solid()
-    line.fill.fore_color.rgb = RGBColor(0, 0, 0)
+    line.fill.fore_color.rgb = HEADER_TEXT_COLOR
+    line.line.fill.background()  # Remove border
+
 
 def create_ppt(data_frames, output_path, start_date, end_date, company_name, company_logo_path, mediaeye_logo_path, neurotime_logo_path, competitor_logo_paths=None, positive_links=None, negative_links=None, positive_posts=None, negative_posts=None):
     try:
         logger.debug("Creating PowerPoint presentation")
         prs = Presentation()
+        
+        # Set slide dimensions to landscape (16:9)
+        prs.slide_width = Inches(13.33)
+        prs.slide_height = Inches(7.5)
+        
         # region  First slide - Title slide with logos and text
         logger.debug("Creating title slide")
         title_slide = prs.slides.add_slide(prs.slide_layouts[5])  # Blank layout
 
-        # Remove default textbox
+        # Constants
+        SLIDE_WIDTH = 13.33
+        LEFT_HALF_CENTER = Inches(SLIDE_WIDTH / 4)        # ~3.33"
+        RIGHT_HALF_CENTER = Inches(3 * SLIDE_WIDTH / 4)   # ~10"
+
+        LEFT_CONTENT_WIDTH = Inches(3.5)
+        LOGO_WIDTH = Inches(5)
+        SPACING_SMALL = Inches(0.1)
+        SPACING_MEDIUM = Inches(0.2)
+
+        # Remove default textboxes
         for shape in title_slide.shapes:
             if shape.has_text_frame:
                 sp = shape._element
                 sp.getparent().remove(sp)
 
-        # Set slide background color to light gray (matching the image)
+        # Background color
         background = title_slide.background
         fill = background.fill
         fill.solid()
-        fill.fore_color.rgb = SLIDE_BG_COLOR  # Light gray background
+        fill.fore_color.rgb = SLIDE_BG_COLOR
 
-        LEFT_MARGIN = Inches(0.7)
-        CONTENT_WIDTH = Inches(3.5)
-        SPACING_SMALL = Inches(0.1)
-        SPACING_MEDIUM = Inches(0.2)
-        LOGO_WIDTH = Inches(5)
- 
-        top = Inches(1.0)  # Starting point
+        # Top offset
+        top = Inches(1.0)
 
-        # Left Side
-        # NeuroTime logo
+        # Calculate centered left margin
+        LEFT_MARGIN = LEFT_HALF_CENTER - LEFT_CONTENT_WIDTH / 2
+
+        # NeuroTime logo (top left half)
         if os.path.exists(neurotime_logo_path):
             title_slide.shapes.add_picture(neurotime_logo_path, LEFT_MARGIN, top, width=Inches(4))
-            top += Inches(1.5)  # Adjusted spacing after logo
+            top += Inches(1.5)
 
         # Main Title
-        title_box = title_slide.shapes.add_textbox(LEFT_MARGIN, top, CONTENT_WIDTH, Inches(1.2))
+        title_box = title_slide.shapes.add_textbox(LEFT_MARGIN, top, LEFT_CONTENT_WIDTH, Inches(1.2))
         tf = title_box.text_frame
         tf.margin_left = tf.margin_right = tf.margin_top = tf.margin_bottom = 0
         p = tf.paragraphs[0]
@@ -125,14 +156,14 @@ def create_ppt(data_frames, output_path, start_date, end_date, company_name, com
         top += Inches(1.2)
 
         # Divider Line
-        line = title_slide.shapes.add_shape(MSO_SHAPE.RECTANGLE, LEFT_MARGIN, top, CONTENT_WIDTH, Inches(0.02))
+        line = title_slide.shapes.add_shape(MSO_SHAPE.RECTANGLE, LEFT_MARGIN, top, LEFT_CONTENT_WIDTH, Inches(0.02))
         line.fill.solid()
         line.fill.fore_color.rgb = RGBColor(0, 123, 191)
         line.line.fill.background()
         top += SPACING_SMALL
 
         # Description
-        desc_box = title_slide.shapes.add_textbox(LEFT_MARGIN, top, CONTENT_WIDTH, Inches(0.6))
+        desc_box = title_slide.shapes.add_textbox(LEFT_MARGIN, top, LEFT_CONTENT_WIDTH, Inches(0.6))
         tf = desc_box.text_frame
         tf.margin_left = tf.margin_right = 0
         p = tf.paragraphs[0]
@@ -143,14 +174,14 @@ def create_ppt(data_frames, output_path, start_date, end_date, company_name, com
         top += Inches(0.6)
 
         # Divider Line
-        line = title_slide.shapes.add_shape(MSO_SHAPE.RECTANGLE, LEFT_MARGIN, top, CONTENT_WIDTH, Inches(0.02))
+        line = title_slide.shapes.add_shape(MSO_SHAPE.RECTANGLE, LEFT_MARGIN, top, LEFT_CONTENT_WIDTH, Inches(0.02))
         line.fill.solid()
         line.fill.fore_color.rgb = RGBColor(0, 123, 191)
         line.line.fill.background()
         top += SPACING_MEDIUM
 
-        # "Analitik hesabat" Text
-        report_box = title_slide.shapes.add_textbox(LEFT_MARGIN, top, CONTENT_WIDTH, Inches(0.3))
+        # "Analitik hesabat"
+        report_box = title_slide.shapes.add_textbox(LEFT_MARGIN, top, LEFT_CONTENT_WIDTH, Inches(0.3))
         tf = report_box.text_frame
         tf.margin_left = tf.margin_right = 0
         p = tf.paragraphs[0]
@@ -159,8 +190,8 @@ def create_ppt(data_frames, output_path, start_date, end_date, company_name, com
         p.font.color.rgb = RGBColor(0, 123, 191)
         top += Inches(0.3)
 
-        # Date Range
-        date_box = title_slide.shapes.add_textbox(LEFT_MARGIN, top, CONTENT_WIDTH, Inches(0.3))
+        # Date
+        date_box = title_slide.shapes.add_textbox(LEFT_MARGIN, top, LEFT_CONTENT_WIDTH, Inches(0.3))
         tf = date_box.text_frame
         tf.margin_left = tf.margin_right = 0
         p = tf.paragraphs[0]
@@ -169,73 +200,122 @@ def create_ppt(data_frames, output_path, start_date, end_date, company_name, com
         p.font.color.rgb = RGBColor(0, 123, 191)
         top += Inches(1.3)
 
-        # --- RIGHT SIDE COMPANY LOGO ---
+        # --- RIGHT Side Company Logo ---
 
         if os.path.exists(company_logo_path):
-            # Position the Bank BTB logo on the right side, vertically centered
-            logo_top = Inches(2.5)  # Centered vertically
+            logo_top = Inches(2.5)
+            right_logo_left = RIGHT_HALF_CENTER - LOGO_WIDTH / 2
             title_slide.shapes.add_picture(
                 company_logo_path,
-                Inches(5), logo_top,  # Moved 1 inch to the left
+                right_logo_left, logo_top,
                 width=LOGO_WIDTH
             )
-
-        # --- DECORATIVE ELEMENTS ---
-        # Add the flowing line elements in corners (optional - if you have the graphics)
-        # These would be separate PNG files with transparency for the corner decorations
 
         # endregion
 
         # region Second slide - Methodology description
         logger.debug("Creating methodology slide")
         method_slide = prs.slides.add_slide(prs.slide_layouts[5])
-        
+
         # Remove default textbox
         for shape in method_slide.shapes:
             if shape.has_text_frame:
                 sp = shape._element
                 sp.getparent().remove(sp)
-        
-        # Add header
-        add_slide_header(method_slide, company_logo_path, start_date, end_date, "Metodologiyanın təsviri")
-        
-        # Add MediaEye logo on the left
-        if os.path.exists(mediaeye_logo_path):
-            img = method_slide.shapes.add_picture(
-                mediaeye_logo_path,
-                Inches(0.5), Inches(1.5),
-                width=Inches(4)
-            )
-        
-        # Add NeuroTime logo on the right top
+
+        SLIDE_WIDTH = prs.slide_width
+        SLIDE_HEIGHT = prs.slide_height
+        HALF_WIDTH = SLIDE_WIDTH / 2
+
+        # Background color
+        background = method_slide.background
+        fill = background.fill
+        fill.solid()
+        fill.fore_color.rgb = SLIDE_BG_COLOR
+
+        # --- Title on top-left ---
+        title_box = method_slide.shapes.add_textbox(Inches(0.3), Inches(0.2), Inches(5), Inches(0.5))
+        tf = title_box.text_frame
+        p = tf.paragraphs[0]
+        p.text = "Metodologiyanın təsviri"
+        p.font.size = Pt(20)
+        p.font.bold = True
+        p.font.color.rgb = RGBColor(0, 123, 191)
+
+        # --- NeuroTime logo (top-right corner) ---
         if os.path.exists(neurotime_logo_path):
-            img = method_slide.shapes.add_picture(
+            method_slide.shapes.add_picture(
                 neurotime_logo_path,
-                Inches(7), Inches(1.5),
-                width=Inches(2)
+                SLIDE_WIDTH - Inches(1.5), Inches(0.3),
+                width=Inches(1.2)
             )
-        
-        # Add competitor logos in grid layout on the right
+
+        # --- MediaEye logo (centered in left half) ---
+        if os.path.exists(mediaeye_logo_path):
+            max_logo_width = Inches(4.5)
+            max_logo_height = Inches(4.5)
+
+            with Image.open(mediaeye_logo_path) as img:
+                width, height = img.size
+                aspect_ratio = width / height
+
+                if aspect_ratio > 1:  # Wider than tall
+                    display_width = max_logo_width
+                    display_height = max_logo_width / aspect_ratio
+                else:
+                    display_height = max_logo_height
+                    display_width = max_logo_height * aspect_ratio
+
+            logo_left = (HALF_WIDTH - display_width) / 2
+            logo_top = (SLIDE_HEIGHT - display_height) / 2
+
+            method_slide.shapes.add_picture(
+                mediaeye_logo_path,
+                logo_left, logo_top,
+                width=display_width,
+                height=display_height
+            )
+
+        # --- Competitor logos grid (up to 25, in right half, centered) ---
         if competitor_logo_paths:
-            grid_left = Inches(5)
-            grid_top = Inches(2)
-            logo_width = Inches(1.5)
-            logo_height = Inches(1.5)
-            logos_per_row = 3
-            spacing = Inches(0.2)
-            
-            for i, logo_path in enumerate(competitor_logo_paths):
+            max_logos = min(25, len(competitor_logo_paths))
+            logos_per_row = 5
+            logos_per_col = 5
+
+            max_logo_width = Inches(1.1)
+            max_logo_height = Inches(0.5)
+            spacing = Inches(0.15)
+
+            grid_width = logos_per_row * max_logo_width + (logos_per_row - 1) * spacing
+            grid_height = logos_per_col * max_logo_height + (logos_per_col - 1) * spacing
+
+            grid_left_start = HALF_WIDTH + (HALF_WIDTH - grid_width) / 2 - Inches(1)
+            grid_top_start = (SLIDE_HEIGHT - grid_height) / 2
+
+            for i, logo_path in enumerate(competitor_logo_paths[:max_logos]):
                 if os.path.exists(logo_path):
                     row = i // logos_per_row
                     col = i % logos_per_row
-                    left = grid_left + (logo_width + spacing) * col
-                    top = grid_top + (logo_height + spacing) * row
-                    
-                    img = method_slide.shapes.add_picture(
+                    left = grid_left_start + col * (max_logo_width + spacing)
+                    top = grid_top_start + row * (max_logo_height + spacing)
+
+                    with Image.open(logo_path) as img:
+                        width, height = img.size
+                        aspect_ratio = width / height
+
+                        if aspect_ratio > 1:
+                            display_width = max_logo_width
+                            display_height = max_logo_width / aspect_ratio
+                        else:
+                            display_height = max_logo_height
+                            display_width = max_logo_height * aspect_ratio
+
+                    method_slide.shapes.add_picture(
                         logo_path,
-                        left, top,
-                        width=logo_width,
-                        height=logo_height
+                        left + (max_logo_width - display_width) / 2,
+                        top + (max_logo_height - display_height) / 2,
+                        width=display_width,
+                        height=display_height
                     )
         # endregion
 

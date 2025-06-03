@@ -157,9 +157,11 @@ function UploadForm() {
       formData.append("company_logo", logos.company);
       formData.append("mediaeye_logo", logos.mediaEye);
       formData.append("neurotime_logo", logos.neuroTime);
-      logos.competitors.forEach((logo, index) => {
+      
+      // Append competitor logos as an array
+      logos.competitors.forEach(logo => {
         if (logo) {
-          formData.append(`competitor_logo_${index}`, logo);
+          formData.append("competitor_logos", logo);
         }
       });
 
