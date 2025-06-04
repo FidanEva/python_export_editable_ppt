@@ -14,7 +14,7 @@ from PIL import Image
 logger = logging.getLogger(__name__)
 
 # Define colors
-SLIDE_BG_COLOR = RGBColor(240, 240, 240)  # Light gray
+SLIDE_BG_COLOR = RGBColor(250, 250, 250)  # Light gray
 CHART_BG_COLOR = RGBColor(255, 255, 255)  # White
 HEADER_TEXT_COLOR = RGBColor(255, 0, 0)    # Red
 
@@ -743,18 +743,104 @@ def create_ppt(data_frames, output_path, start_date, end_date, company_name, com
                 series.format.fill.fore_color.rgb = SENTIMENT_COLORS[list(SENTIMENT_COLORS.keys())[i]]
         # endregion
 
-        # region Seventh slide - Facebook metrics table
-        logger.debug("Creating sixth slide with Facebook metrics table")
+        # region Seventh slide - Facebook metrics table Combines sources
+        logger.debug("Creating eighth slide with Facebook metrics table by company")
         slide7 = prs.slides.add_slide(prs.slide_layouts[5])
         # Remove default textbox
         for shape in slide7.shapes:
             if shape.has_text_frame:
                 sp = shape._element
                 sp.getparent().remove(sp)
-        add_slide_header(slide7, company_logo_path, start_date, end_date, "Bankların rəsmi Facebook səhifələrinin analizi")
+        add_slide_header(slide7, company_logo_path, start_date, end_date, "Banklar haqqında paylaşılan postların analizi")
 
         # Set slide background
         background = slide7.background
+        fill = background.fill
+        fill.solid()
+        fill.fore_color.rgb = SLIDE_BG_COLOR
+        
+        if 'combined_sources' in data_frames and 'Facebook' in data_frames['combined_sources']:
+            fb_data = data_frames['combined_sources']['Facebook']
+            
+            # Group data by Company
+            grouped_data = fb_data.groupby('Company').agg({
+                'comment_count': 'sum',
+                'like_count': 'sum',
+                'share_count': 'sum',
+                'view_count': 'sum'
+            }).reset_index()
+            
+            # Add post count
+            post_counts = fb_data.groupby('Company').size().reset_index(name='post_count')
+            grouped_data = grouped_data.merge(post_counts, on='Company')
+            
+            # Create table
+            rows = len(grouped_data) + 1  # +1 for header
+            cols = 6  # Company, post_count, comment_count, like_count, share_count, view_count
+            
+            left = Inches(0.5)
+            top = Inches(1)
+            width = Inches(9)
+            height = Inches(5)
+            
+            table = slide7.shapes.add_table(rows, cols, left, top, width, height).table
+            
+            # Set column widths
+            table.columns[0].width = Inches(2)  # Company
+            for i in range(1, cols):
+                table.columns[i].width = Inches(1.4)  # Metrics
+            
+            # Add headers with red background
+            headers = ['Company', 'Posts', 'Comments', 'Likes', 'Shares', 'Views']
+            for i, header in enumerate(headers):
+                cell = table.cell(0, i)
+                cell.text = header
+                cell.text_frame.paragraphs[0].font.size = Pt(12)
+                cell.text_frame.paragraphs[0].font.bold = True
+                cell.fill.solid()
+                cell.fill.fore_color.rgb = RGBColor(255, 0, 0)  # Red
+                cell.text_frame.paragraphs[0].font.color.rgb = RGBColor(255, 255, 255)  # White text
+            
+            # Add data with alternating row colors
+            for i, row in grouped_data.iterrows():
+                for j in range(cols):
+                    cell = table.cell(i + 1, j)
+                    if j == 0:
+                        cell.text = str(row['Company'])
+                    elif j == 1:
+                        cell.text = str(row['post_count'])
+                    elif j == 2:
+                        cell.text = str(row['comment_count'])
+                    elif j == 3:
+                        cell.text = str(row['like_count'])
+                    elif j == 4:
+                        cell.text = str(row['share_count'])
+                    else:
+                        cell.text = str(row['view_count'])
+                    
+                    cell.text_frame.paragraphs[0].font.size = Pt(10)
+                    
+                    # Set alternating row colors
+                    if i % 2 == 0:
+                        cell.fill.solid()
+                        cell.fill.fore_color.rgb = RGBColor(240, 240, 240)  # Light gray
+                    else:
+                        cell.fill.solid()
+                        cell.fill.fore_color.rgb = RGBColor(255, 255, 255)  # White
+        # endregion
+
+        # region Eighth slide - Official Facebook metrics table
+        logger.debug("Creating seventh slide with Facebook metrics table")
+        slide8 = prs.slides.add_slide(prs.slide_layouts[5])
+        # Remove default textbox
+        for shape in slide8.shapes:
+            if shape.has_text_frame:
+                sp = shape._element
+                sp.getparent().remove(sp)
+        add_slide_header(slide8, company_logo_path, start_date, end_date, "Bankların rəsmi Facebook səhifələrinin analizi")
+
+        # Set slide background
+        background = slide8.background
         fill = background.fill
         fill.solid()
         fill.fore_color.rgb = SLIDE_BG_COLOR
@@ -789,7 +875,7 @@ def create_ppt(data_frames, output_path, start_date, end_date, company_name, com
             width = Inches(9)
             height = Inches(5)
             
-            table = slide7.shapes.add_table(rows, cols, left, top, width, height).table
+            table = slide8.shapes.add_table(rows, cols, left, top, width, height).table
             
             # Set column widths
             table.columns[0].width = Inches(2)  # Company
@@ -835,18 +921,168 @@ def create_ppt(data_frames, output_path, start_date, end_date, company_name, com
                         cell.fill.fore_color.rgb = RGBColor(255, 255, 255)  # White
         # endregion
 
-        # region  Eigthth slide - Linkedin sentiment analysis
-        logger.debug("Creating seventh slide with Linkedin sentiment analysis")
-        slide8 = prs.slides.add_slide(prs.slide_layouts[5])
+        # region Ninth slide - Instagram metrics and sentiment analysis
+        logger.debug("Creating ninth slide with Instagram metrics and sentiment analysis")
+        slide9 = prs.slides.add_slide(prs.slide_layouts[5])
         # Remove default textbox
-        for shape in slide8.shapes:
+        for shape in slide9.shapes:
             if shape.has_text_frame:
                 sp = shape._element
                 sp.getparent().remove(sp)
-        add_slide_header(slide8, company_logo_path, start_date, end_date, "Linkedln postlarının analizi")
+        add_slide_header(slide9, company_logo_path, start_date, end_date, "Instagram postlarının analizi")
 
         # Set slide background
-        background = slide8.background
+        background = slide9.background
+        fill = background.fill
+        fill.solid()
+        fill.fore_color.rgb = SLIDE_BG_COLOR
+
+        # Left side - Instagram metrics from official_instagram
+        if 'official_instagram' in data_frames and len(data_frames['official_instagram']) > 0:
+            insta_data = list(data_frames['official_instagram'].values())[0]
+            company_metrics = insta_data[insta_data['Company'] == company_name]
+            
+            metrics = {
+                'Total Likes': company_metrics['Likes'].sum(),
+                'Total Comments': company_metrics['Comments'].sum()
+            }
+            
+            # Create separate boxes for each metric
+            left = Inches(0.5)
+            top = Inches(1)
+            width = Inches(2)
+            height = Inches(0.8)
+            spacing = Inches(0.2)
+            
+            for i, (metric, value) in enumerate(metrics.items()):
+                # Add red background shape
+                bg_shape = slide9.shapes.add_shape(
+                    MSO_SHAPE.ROUNDED_RECTANGLE,
+                    left, top + (height + spacing) * i, width, height
+                )
+                bg_shape.fill.solid()
+                bg_shape.fill.fore_color.rgb = RGBColor(255, 0, 0)
+                
+                # Add text box with icon
+                txBox = slide9.shapes.add_textbox(
+                    left + Inches(0.1), 
+                    top + (height + spacing) * i + Inches(0.1), 
+                    width - Inches(0.2), 
+                    height - Inches(0.2)
+                )
+                tf = txBox.text_frame
+                p = tf.add_paragraph()
+                p.text = f"📸 {metric}: {value:,}"
+                p.alignment = PP_ALIGN.LEFT
+                p.font.size = Pt(12)
+                p.font.color.rgb = RGBColor(255, 255, 255)  # White text
+
+        # Right side - Sentiment analysis from combined_sources
+        if 'combined_sources' in data_frames and 'Instagram' in data_frames['combined_sources']:
+            insta_sentiment_data = data_frames['combined_sources']['Instagram']
+            company_sentiment = insta_sentiment_data[insta_sentiment_data['Company'] == company_name]
+            
+            # Donut chart
+            sentiment_counts = company_sentiment['Sentiment'].value_counts()
+            donut_data = ChartData()
+            donut_data.categories = ['Positive', 'Neutral', 'Negative']
+            donut_data.add_series('Sentiment Distribution', [
+                sentiment_counts.get(1, 0),
+                sentiment_counts.get(0, 0),
+                sentiment_counts.get(-1, 0)
+            ])
+            
+            x, y, cx, cy = Inches(3), Inches(1), Inches(3), Inches(3)
+            donut = slide9.shapes.add_chart(XL_CHART_TYPE.DOUGHNUT, x, y, cx, cy, donut_data).chart
+            donut.has_legend = True
+            donut.legend.position = XL_LEGEND_POSITION.BOTTOM
+            donut.legend.font.size = Pt(10)
+            
+            # Set chart background
+            donut.chart_style = 2  # White background
+            
+            # Set colors for donut chart
+            for i, point in enumerate(donut.series[0].points):
+                point.format.fill.solid()
+                point.format.fill.fore_color.rgb = SENTIMENT_COLORS[list(SENTIMENT_COLORS.keys())[i]]
+            
+            # Multiline chart
+            sentiment_by_date = company_sentiment.groupby('Day')['Sentiment'].value_counts().unstack(fill_value=0)
+            chart_data = CategoryChartData()
+            chart_data.categories = sentiment_by_date.index.tolist()
+            
+            for sentiment in [1, 0, -1]:
+                series_name = "Positive" if sentiment == 1 else "Neutral" if sentiment == 0 else "Negative"
+                if sentiment in sentiment_by_date.columns:
+                    chart_data.add_series(series_name, sentiment_by_date[sentiment].tolist())
+            
+            x, y, cx, cy = Inches(6), Inches(1), Inches(3), Inches(3)
+            chart = slide9.shapes.add_chart(XL_CHART_TYPE.LINE, x, y, cx, cy, chart_data).chart
+            chart.has_legend = True
+            chart.legend.position = XL_LEGEND_POSITION.BOTTOM
+            chart.legend.font.size = Pt(10)
+            
+            # Set chart background and formatting
+            chart.chart_style = 2  # White background
+            chart.plots[0].has_major_gridlines = False
+            chart.plots[0].has_minor_gridlines = False
+            
+            # Set colors for line chart
+            for i, series in enumerate(chart.series):
+                series.format.line.color.rgb = SENTIMENT_COLORS[list(SENTIMENT_COLORS.keys())[i]]
+                series.format.line.width = Pt(2)
+            
+            # Vertical multibar chart for Instagram company sentiment comparison
+            insta_sentiment_data = insta_sentiment_data[insta_sentiment_data['Sentiment'].isin([-1, 0, 1])]
+            company_sentiments = insta_sentiment_data.groupby('Company')['Sentiment'].value_counts().unstack(fill_value=0)
+
+            chart_data = CategoryChartData()
+            chart_data.categories = company_sentiments.index.tolist()
+
+            for sentiment in [1, 0, -1]:
+                series_name = "Positive" if sentiment == 1 else "Neutral" if sentiment == 0 else "Negative"
+                if sentiment in company_sentiments.columns:
+                    chart_data.add_series(series_name, company_sentiments[sentiment].tolist())
+
+            x, y, cx, cy = Inches(3), Inches(4), Inches(6), Inches(3)
+            chart = slide9.shapes.add_chart(XL_CHART_TYPE.COLUMN_CLUSTERED, x, y, cx, cy, chart_data).chart
+            chart.has_legend = True
+            chart.legend.position = XL_LEGEND_POSITION.BOTTOM
+            chart.legend.font.size = Pt(10)
+
+            # Set chart background and formatting
+            chart.chart_style = 2  # White background
+            chart.plots[0].has_major_gridlines = False
+            chart.plots[0].has_minor_gridlines = False
+
+            # Set axis titles and labels
+            if hasattr(chart, 'category_axis'):
+                chart.category_axis.tick_labels.font.size = Pt(7)
+                if hasattr(chart.category_axis, 'axis_title') and chart.category_axis.axis_title:
+                    chart.category_axis.axis_title.text_frame.paragraphs[0].font.size = Pt(8)
+            if hasattr(chart, 'value_axis'):
+                chart.value_axis.tick_labels.font.size = Pt(7)
+                if hasattr(chart.value_axis, 'axis_title') and chart.value_axis.axis_title:
+                    chart.value_axis.axis_title.text_frame.paragraphs[0].font.size = Pt(8)
+
+            # Set colors for bar chart
+            for i, series in enumerate(chart.series):
+                series.format.fill.solid()
+                series.format.fill.fore_color.rgb = SENTIMENT_COLORS[list(SENTIMENT_COLORS.keys())[i]]
+        # endregion
+
+        # region Tenth slide - Linkedin sentiment analysis
+        logger.debug("Creating tenth slide with Linkedin sentiment analysis")
+        slide10 = prs.slides.add_slide(prs.slide_layouts[5])
+        # Remove default textbox
+        for shape in slide10.shapes:
+            if shape.has_text_frame:
+                sp = shape._element
+                sp.getparent().remove(sp)
+        add_slide_header(slide10, company_logo_path, start_date, end_date, "Linkedln postlarının analizi")
+
+        # Set slide background
+        background = slide10.background
         fill = background.fill
         fill.solid()
         fill.fore_color.rgb = SLIDE_BG_COLOR
@@ -867,7 +1103,7 @@ def create_ppt(data_frames, output_path, start_date, end_date, company_name, com
                 ])
                 
                 x, y, cx, cy = Inches(0.5), Inches(1), Inches(4), Inches(4)
-                donut = slide8.shapes.add_chart(XL_CHART_TYPE.DOUGHNUT, x, y, cx, cy, donut_data).chart
+                donut = slide10.shapes.add_chart(XL_CHART_TYPE.DOUGHNUT, x, y, cx, cy, donut_data).chart
                 donut.has_legend = True
                 donut.legend.position = XL_LEGEND_POSITION.BOTTOM
                 donut.legend.font.size = Pt(10)
@@ -891,7 +1127,7 @@ def create_ppt(data_frames, output_path, start_date, end_date, company_name, com
                         chart_data.add_series(series_name, sentiment_by_date[sentiment].tolist())
                 
                 x, y, cx, cy = Inches(5), Inches(1), Inches(4.5), Inches(4)
-                chart = slide8.shapes.add_chart(XL_CHART_TYPE.LINE, x, y, cx, cy, chart_data).chart
+                chart = slide10.shapes.add_chart(XL_CHART_TYPE.LINE, x, y, cx, cy, chart_data).chart
                 chart.has_legend = True
                 chart.legend.position = XL_LEGEND_POSITION.BOTTOM
                 chart.legend.font.size = Pt(10)
@@ -928,7 +1164,7 @@ def create_ppt(data_frames, output_path, start_date, end_date, company_name, com
                         chart_data.add_series(series_name, company_sentiments[sentiment].tolist())
 
                 x, y, cx, cy = Inches(0.5), Inches(5), Inches(9), Inches(3)
-                chart = slide8.shapes.add_chart(XL_CHART_TYPE.COLUMN_CLUSTERED, x, y, cx, cy, chart_data).chart
+                chart = slide10.shapes.add_chart(XL_CHART_TYPE.COLUMN_CLUSTERED, x, y, cx, cy, chart_data).chart
                 chart.has_legend = True
                 chart.legend.position = XL_LEGEND_POSITION.BOTTOM
                 chart.legend.font.size = Pt(10)
@@ -957,14 +1193,15 @@ def create_ppt(data_frames, output_path, start_date, end_date, company_name, com
                 logger.warning(f"No Linkedin data found for company: {company_name}")
         # endregion
 
-        # region Ninth slide - Positive and Negative Postsif positive_posts or negative_posts:
-        slide9 = prs.slides.add_slide(prs.slide_layouts[5])
+        # region Eleventh slide - Positive and Negative Posts
+        logger.debug("Creating ninth slide with positive and negative posts")
+        slide11 = prs.slides.add_slide(prs.slide_layouts[5])
         # Remove default textbox
-        for shape in slide9.shapes:
+        for shape in slide11.shapes:
             if shape.has_text_frame:
                 sp = shape._element
                 sp.getparent().remove(sp)
-        add_slide_header(slide9, company_logo_path, start_date, end_date, "Sosial media postlarının analizi")
+        add_slide_header(slide11, company_logo_path, start_date, end_date, "Sosial media postlarının analizi")
 
         image_width = Inches(2)
         vertical_spacing = Inches(0.05)
@@ -1027,10 +1264,10 @@ def create_ppt(data_frames, output_path, start_date, end_date, company_name, com
 
         # Apply layout for each group
         if negative_posts:
-            layout_posts(slide9, negative_posts[:3], group_center_x=Inches(2.25))  # left half
+            layout_posts(slide11, negative_posts[:3], group_center_x=Inches(2.25))  # left half
 
         if positive_posts:
-            layout_posts(slide9, positive_posts[:3], group_center_x=Inches(7))  # right half
+            layout_posts(slide11, positive_posts[:3], group_center_x=Inches(7))  # right half
 
         # endregion
 

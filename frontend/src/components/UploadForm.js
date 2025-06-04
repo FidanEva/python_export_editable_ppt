@@ -6,7 +6,7 @@ function UploadForm() {
     combined_sources: null,
     official_instagram: null,
     official_facebook: null,
-    keywords: null,
+    // keywords: null,
   });
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
@@ -424,18 +424,6 @@ function UploadForm() {
               accept=".xlsx"
               onChange={(e) => handleExcelChange(e.target.files?.[0], "official_facebook")}
               aria-label="Official Facebook Excel file"
-              style={{ marginTop: "5px" }}
-            />
-          </div>
-
-          <div>
-            <label htmlFor="keywords">Keywords</label>
-            <input
-              id="keywords"
-              type="file"
-              accept=".xlsx"
-              onChange={(e) => handleExcelChange(e.target.files?.[0], "keywords")}
-              aria-label="Keywords Excel file"
               style={{ marginTop: "5px" }}
             />
           </div>
