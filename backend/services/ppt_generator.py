@@ -16,7 +16,8 @@ logger = logging.getLogger(__name__)
 # Define colors
 SLIDE_BG_COLOR = RGBColor(250, 250, 250)  # Light gray
 CHART_BG_COLOR = RGBColor(255, 255, 255)  # White
-HEADER_TEXT_COLOR = RGBColor(255, 0, 0)    # Red
+HEADER_TEXT_COLOR = RGBColor(214, 55, 64)    # Red
+HEADER_HEIGHT = 0.8
 
 # Define sentiment colors
 SENTIMENT_COLORS = {
@@ -39,7 +40,6 @@ def add_slide_header(slide, company_logo_path, start_date, end_date, title):
 
     # Set constants
     SLIDE_WIDTH_INCHES = 13.33
-    HEADER_HEIGHT = 0.8
 
     # Add header background with SLIDE_BG_COLOR
     header = slide.shapes.add_shape(
@@ -877,27 +877,33 @@ def create_ppt(data_frames, output_path, start_date, end_date, company_name, com
             rows = len(grouped_data) + 1  # +1 for header
             cols = 6  # Company, post_count, comment_count, like_count, share_count, view_count
             
+            # Calculate centered position
+            # Slide width: 13.33", Table width: 12.33" (leaving 0.5" on each side)
+            # Center horizontally: (13.33 - 12.33) / 2 = 0.5"
             left = Inches(0.5)
+            
+            # Slide height: 7.5", Header: 0.8", Table height: 5"
+            # Center vertically in remaining space: 0.8 + (6.7 - 5) / 2 = 1.65"
             top = Inches(1)
-            width = Inches(9)
+            width = Inches(12.33)
             height = Inches(5)
             
             table = slide7.shapes.add_table(rows, cols, left, top, width, height).table
             
-            # Set column widths
-            table.columns[0].width = Inches(2)  # Company
+            # Set column widths with wider spacing
+            table.columns[0].width = Inches(3)  # Company name (wider for longer names)
             for i in range(1, cols):
-                table.columns[i].width = Inches(1.4)  # Metrics
+                table.columns[i].width = Inches(1.866)  # Metrics (remaining width distributed evenly)
             
             # Add headers with red background
-            headers = ['Company', 'Posts', 'Comments', 'Likes', 'Shares', 'Views']
+            headers = ['Banklar ', 'Post sayı', 'Şərh sayı', 'Bəyənmə sayı', 'Paylaşım sayı', 'Baxış sayı']
             for i, header in enumerate(headers):
                 cell = table.cell(0, i)
                 cell.text = header
                 cell.text_frame.paragraphs[0].font.size = Pt(12)
                 cell.text_frame.paragraphs[0].font.bold = True
                 cell.fill.solid()
-                cell.fill.fore_color.rgb = RGBColor(255, 0, 0)  # Red
+                cell.fill.fore_color.rgb = HEADER_TEXT_COLOR
                 cell.text_frame.paragraphs[0].font.color.rgb = RGBColor(255, 255, 255)  # White text
             
             # Add data with alternating row colors
@@ -909,13 +915,13 @@ def create_ppt(data_frames, output_path, start_date, end_date, company_name, com
                     elif j == 1:
                         cell.text = str(row['post_count'])
                     elif j == 2:
-                        cell.text = str(row['comment_count'])
-                    elif j == 3:
-                        cell.text = str(row['like_count'])
-                    elif j == 4:
-                        cell.text = str(row['share_count'])
-                    else:
                         cell.text = str(row['view_count'])
+                    elif j == 3:
+                        cell.text = str(row['comment_count'])
+                    elif j == 4:
+                        cell.text = str(row['like_count'])
+                    else:
+                        cell.text = str(row['share_count'])
                     
                     cell.text_frame.paragraphs[0].font.size = Pt(10)
                     
@@ -969,27 +975,33 @@ def create_ppt(data_frames, output_path, start_date, end_date, company_name, com
             rows = len(grouped_data) + 1  # +1 for header
             cols = 6  # Company, post_count, comment_count, like_count, share_count, view_count
             
+            # Calculate centered position
+            # Slide width: 13.33", Table width: 12.33" (leaving 0.5" on each side)
+            # Center horizontally: (13.33 - 12.33) / 2 = 0.5"
             left = Inches(0.5)
+            
+            # Slide height: 7.5", Header: 0.8", Table height: 5"
+            # Center vertically in remaining space: 0.8 + (6.7 - 5) / 2 = 1.65"
             top = Inches(1)
-            width = Inches(9)
+            width = Inches(12.33)
             height = Inches(5)
             
             table = slide8.shapes.add_table(rows, cols, left, top, width, height).table
             
-            # Set column widths
-            table.columns[0].width = Inches(2)  # Company
+            # Set column widths with wider spacing
+            table.columns[0].width = Inches(3)  # Company name (wider for longer names)
             for i in range(1, cols):
-                table.columns[i].width = Inches(1.4)  # Metrics
+                table.columns[i].width = Inches(1.866)  # Metrics (remaining width distributed evenly)
             
             # Add headers with red background
-            headers = ['Company', 'Posts', 'Comments', 'Likes', 'Shares', 'Views']
+            headers = ['Banklar ', 'Post sayı', 'Şərh sayı', 'Bəyənmə sayı', 'Paylaşım sayı', 'Baxış sayı']
             for i, header in enumerate(headers):
                 cell = table.cell(0, i)
                 cell.text = header
                 cell.text_frame.paragraphs[0].font.size = Pt(12)
                 cell.text_frame.paragraphs[0].font.bold = True
                 cell.fill.solid()
-                cell.fill.fore_color.rgb = RGBColor(255, 0, 0)  # Red
+                cell.fill.fore_color.rgb = HEADER_TEXT_COLOR
                 cell.text_frame.paragraphs[0].font.color.rgb = RGBColor(255, 255, 255)  # White text
             
             # Add data with alternating row colors
@@ -1001,13 +1013,13 @@ def create_ppt(data_frames, output_path, start_date, end_date, company_name, com
                     elif j == 1:
                         cell.text = str(row['post_count'])
                     elif j == 2:
-                        cell.text = str(row['comment_count'])
+                        cell.text = str(row['comment_count'])  # Changed order to match headers
                     elif j == 3:
-                        cell.text = str(row['like_count'])
+                        cell.text = str(row['like_count'])    # Changed order to match headers
                     elif j == 4:
-                        cell.text = str(row['share_count'])
+                        cell.text = str(row['share_count'])   # Changed order to match headers
                     else:
-                        cell.text = str(row['view_count'])
+                        cell.text = str(row['view_count'])    # Changed order to match headers
                     
                     cell.text_frame.paragraphs[0].font.size = Pt(10)
                     
