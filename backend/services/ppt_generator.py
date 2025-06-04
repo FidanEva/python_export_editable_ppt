@@ -1,7 +1,7 @@
 from pptx import Presentation
 from pptx.util import Inches, Pt
 from pptx.chart.data import CategoryChartData, ChartData
-from pptx.enum.chart import XL_CHART_TYPE, XL_LEGEND_POSITION, XL_TICK_LABEL_POSITION
+from pptx.enum.chart import XL_CHART_TYPE, XL_LEGEND_POSITION, XL_TICK_LABEL_POSITION, XL_DATA_LABEL_POSITION
 from pptx.dml.color import RGBColor
 from pptx.enum.text import PP_ALIGN
 from pptx.enum.shapes import MSO_SHAPE
@@ -543,53 +543,152 @@ def create_ppt(data_frames, output_path, start_date, end_date, company_name, com
         # endregion
 
         # region Fifth slide - Author count horizontal bar chart
-        logger.debug("Creating fourth slide with author count chart")
+        logger.debug("Creating fifth slide with author count chart")
         slide5 = prs.slides.add_slide(prs.slide_layouts[5])
         # Remove default textbox
         for shape in slide5.shapes:
             if shape.has_text_frame:
                 sp = shape._element
                 sp.getparent().remove(sp)
-        
-        add_slide_header(slide5, company_logo_path, start_date, end_date, "Xəbər saylarının saytlar üzərindən bölgüsü")
 
+        add_slide_header(slide5, company_logo_path, start_date, end_date, "Xəbər saylarının saytlar üzərindən bölgüsü")
         # Set slide background
         background = slide5.background
         fill = background.fill
         fill.solid()
         fill.fore_color.rgb = SLIDE_BG_COLOR
-        
+
         # Filter and group data by author
         author_data = combined_data[combined_data['Company'] == company_name].groupby('Author').size().sort_values(ascending=True)
-        
-        chart_data = CategoryChartData()
-        chart_data.categories = author_data.index.tolist()
-        chart_data.add_series('Post Count', author_data.values.tolist())
-        
-        x, y, cx, cy = Inches(0.5), Inches(1), Inches(9), Inches(5)
-        chart = slide5.shapes.add_chart(XL_CHART_TYPE.BAR_CLUSTERED, x, y, cx, cy, chart_data).chart
-        chart.has_legend = False
-        
-        # Set chart background and formatting
-        chart.chart_style = 2  # White background
-        chart.plots[0].has_major_gridlines = False
-        chart.plots[0].has_minor_gridlines = False
-        
-        # Make bars thicker
-        for series in chart.series:
-            series.format.fill.solid()
-            series.format.fill.fore_color.rgb = RGBColor(173, 216, 230)  # Light blue
-            series.format.gap_width = 100  # Make bars thicker
-        
-        # Show all y-axis labels
-        if hasattr(chart, 'category_axis'):
-            chart.category_axis.tick_labels.font.size = Pt(8)
-            chart.category_axis.tick_label_position = XL_TICK_LABEL_POSITION.LOW
-        
-        # Set blue color for bars
-        for series in chart.series:
-            series.format.fill.solid()
-            series.format.fill.fore_color.rgb = RGBColor(0, 112, 192)  # Blue color
+
+        # Ensure we have data to prevent errors
+        if len(author_data) == 0:
+            logger.warning("No author data found for chart")
+            # Add a text placeholder or skip chart creation
+        else:
+            chart_data = CategoryChartData()
+            chart_data.categories = author_data.index.tolist()
+            chart_data.add_series('', author_data.values.tolist())  # Empty series name to remove title
+            
+            # Calculate centered position
+            # Slide dimensions: 13.33" x 7.5"
+            # Header height: 0.8"
+            # Available space: 7.5 - 0.8 = 6.7"
+            chart_width = Inches(11.5)  # Increased width further
+            chart_height = Inches(6.0)  # Increased height further
+            
+            # Center horizontally: (13.33 - 11.5) / 2 = 0.915
+            # Center vertically in remaining space: 0.8 + (6.7 - 6.0) / 2 = 1.15
+            x = Inches(0.9)
+            y = Inches(1.15)
+            
+            chart = slide5.shapes.add_chart(XL_CHART_TYPE.BAR_CLUSTERED, x, y, chart_width, chart_height, chart_data).chart
+            
+            # Remove legend
+            chart.has_legend = False
+            
+            # Set white background for chart area and plot area
+            try:
+                # Chart area background
+                chart.chart_area.fill.solid()
+                chart.chart_area.fill.fore_color.rgb = RGBColor(255, 255, 255)
+                
+                # Plot area background - solid white fill
+                try:
+                    chart.plot_area.format.fill.solid()
+                    chart.plot_area.format.fill.fore_color.rgb = RGBColor(255, 255, 255)
+                except Exception as e:
+                    logger.warning(f"Could not set plot area fill color: {e}")
+
+            except Exception as e:
+                logger.warning(f"Could not set chart background: {e}")
+            
+            # Remove all gridlines
+            try:
+                # Remove major and minor gridlines from the plot
+                chart.plots[0].has_major_gridlines = False
+                chart.plots[0].has_minor_gridlines = False
+                
+                # Also remove gridlines from both axes
+                if hasattr(chart, 'category_axis') and chart.category_axis:
+                    chart.category_axis.has_major_gridlines = False
+                    chart.category_axis.has_minor_gridlines = False
+                
+                if hasattr(chart, 'value_axis') and chart.value_axis:
+                    chart.value_axis.has_major_gridlines = False
+                    chart.value_axis.has_minor_gridlines = False
+                    
+            except Exception as e:
+                logger.warning(f"Could not remove gridlines: {e}")
+            
+            # Configure category axis (Y-axis for horizontal bar chart) - keep only this axis
+            try:
+                if hasattr(chart, 'category_axis') and chart.category_axis:
+                    chart.category_axis.tick_labels.font.size = Pt(9)
+                    chart.category_axis.tick_label_position = XL_TICK_LABEL_POSITION.LOW  # Keep Y-axis labels on left
+                    # Remove axis title
+                    chart.category_axis.has_title = False
+                    # Keep the axis line visible
+                    chart.category_axis.format.line.color.rgb = RGBColor(0, 0, 0)  # Black axis line
+            except Exception as e:
+                logger.warning(f"Could not configure category axis: {e}")
+            
+            # Remove/hide value axis (X-axis for horizontal bar chart)
+            try:
+                if hasattr(chart, 'value_axis') and chart.value_axis:
+                    # Hide the axis completely
+                    chart.value_axis.visible = False
+                    # Alternative: make axis line transparent
+                    chart.value_axis.format.line.fill.background()
+                    # Remove axis title
+                    chart.value_axis.has_title = False
+                    # Hide tick labels
+                    chart.value_axis.tick_labels.font.size = Pt(1)
+                    chart.value_axis.tick_labels.font.color.rgb = RGBColor(255, 255, 255)  # Make invisible
+            except Exception as e:
+                logger.warning(f"Could not configure value axis: {e}")
+            
+            # Format bars and add data labels
+            try:
+                for series in chart.series:
+                    # Set bar color
+                    series.format.fill.solid()
+                    series.format.fill.fore_color.rgb = RGBColor(160, 208, 255)  # Blue color
+                    
+                    # Make bars thick but add space between them
+                    series.format.gap_width = 40  # Thick bars with some spacing
+                    
+                    # Remove line around bars to prevent errors
+                    series.format.line.fill.background()
+                    
+                    # Add data labels to outside end
+                    series.has_data_labels = True
+                    data_labels = series.data_labels
+                    data_labels.position = XL_DATA_LABEL_POSITION.OUTSIDE_END
+                    data_labels.font.size = Pt(10)
+                    data_labels.font.color.rgb = RGBColor(0, 0, 0)  # Black text
+                    data_labels.font.bold = True
+                    data_labels.number_format = '0'  # Show whole numbers only
+                    
+            except Exception as e:
+                logger.warning(f"Could not format series or data labels: {e}")
+            
+            # Additional formatting for bars spacing
+            try:
+                # Access the plot area and modify bar thickness
+                plot = chart.plots[0]
+                plot.gap_width = 40  # Set plot-level gap width for spacing
+            except Exception as e:
+                logger.warning(f"Could not set plot formatting: {e}")
+            
+            # Remove chart title if it exists
+            try:
+                if chart.has_title:
+                    chart.chart_title.text_frame.text = ''
+                    chart.chart_title.include_in_layout = False
+            except Exception as e:
+                logger.warning(f"Could not remove chart title: {e}")
+
         # endregion
 
         # region Sixth slide - Facebook metrics and sentiment analysis
