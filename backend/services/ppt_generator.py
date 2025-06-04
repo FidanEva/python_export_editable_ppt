@@ -35,6 +35,27 @@ METRIC_ICONS = {
     'Total Views': '👁️'
 }
 
+def format_chart_axes(chart, category_font_size=6, value_font_size=6, rotation_angle=-45):
+    """Helper function to consistently format chart axes"""
+    if hasattr(chart, 'category_axis'):
+        chart.category_axis.tick_labels.font.size = Pt(category_font_size)
+        chart.category_axis.tick_labels.font.bold = False
+        if hasattr(chart.category_axis, 'axis_title') and chart.category_axis.axis_title:
+            chart.category_axis.axis_title.text_frame.paragraphs[0].font.size = Pt(category_font_size)
+        # Set labels at specified angle
+        chart.category_axis.tick_label_position = XL_TICK_LABEL_POSITION.LOW
+        chart.category_axis.tick_label_rotation = rotation_angle
+        chart.category_axis.tick_labels.font.color.rgb = RGBColor(89, 89, 89)
+        chart.category_axis.has_major_gridlines = False
+    
+    if hasattr(chart, 'value_axis'):
+        chart.value_axis.tick_labels.font.size = Pt(value_font_size)
+        chart.value_axis.tick_labels.font.bold = False
+        if hasattr(chart.value_axis, 'axis_title') and chart.value_axis.axis_title:
+            chart.value_axis.axis_title.text_frame.paragraphs[0].font.size = Pt(value_font_size)
+        chart.value_axis.tick_labels.font.color.rgb = RGBColor(89, 89, 89)
+        chart.value_axis.has_major_gridlines = False
+
 def add_slide_header(slide, company_logo_path, start_date, end_date, title):
     """Helper function to add a consistent header to slides"""
 
@@ -96,6 +117,54 @@ def add_slide_header(slide, company_logo_path, start_date, end_date, title):
     line.fill.fore_color.rgb = HEADER_TEXT_COLOR
     line.line.fill.background()  # Remove border
 
+
+# Function to apply consistent chart formatting
+def apply_chart_formatting(chart, use_legend=True, legend_position=XL_LEGEND_POSITION.TOP, 
+                         category_font_size=6, value_font_size=6, 
+                         title=None, title_size=14):
+    """Helper function for consistent chart formatting across slides"""
+    
+    # Basic chart settings
+    chart.chart_style = 2  # White background
+    chart.plots[0].has_major_gridlines = False
+    chart.plots[0].has_minor_gridlines = False
+    
+    # Legend settings
+    chart.has_legend = use_legend
+    if use_legend:
+        chart.legend.position = legend_position
+        chart.legend.font.size = Pt(12)
+        
+    # Title settings
+    if title:
+        chart.has_title = True
+        chart.chart_title.text_frame.text = f"📊 {title}"
+        chart.chart_title.text_frame.paragraphs[0].font.size = Pt(title_size)
+        chart.chart_title.text_frame.paragraphs[0].font.bold = True
+        chart.chart_title.text_frame.paragraphs[0].font.color.rgb = HEADER_TEXT_COLOR
+        
+    # Axis formatting
+    if hasattr(chart, 'category_axis'):
+        chart.category_axis.tick_labels.font.size = Pt(category_font_size)
+        chart.category_axis.tick_labels.font.bold = False
+        chart.category_axis.tick_label_position = XL_TICK_LABEL_POSITION.LOW
+        chart.category_axis.tick_label_rotation = -45  # 45-degree angle
+        chart.category_axis.tick_labels.font.color.rgb = RGBColor(89, 89, 89)
+        chart.category_axis.has_major_gridlines = False
+        
+    if hasattr(chart, 'value_axis'):
+        chart.value_axis.tick_labels.font.size = Pt(value_font_size)
+        chart.value_axis.tick_labels.font.bold = False
+        chart.value_axis.tick_labels.font.color.rgb = RGBColor(89, 89, 89)
+        chart.value_axis.has_major_gridlines = False
+
+def apply_sentiment_colors(chart):
+    """Helper function to apply consistent sentiment colors to chart series"""
+    for i, series in enumerate(chart.series):
+        series.format.fill.solid()
+        # The series order should match [1, 0, -1] for [Positive, Neutral, Negative]
+        sentiment_value = [1, 0, -1][i]
+        series.format.fill.fore_color.rgb = SENTIMENT_COLORS[sentiment_value]
 
 def create_ppt(data_frames, output_path, start_date, end_date, company_name, company_logo_path, mediaeye_logo_path, neurotime_logo_path, competitor_logo_paths=None, positive_links=None, negative_links=None, positive_posts=None, negative_posts=None):
     try:
@@ -443,15 +512,11 @@ def create_ppt(data_frames, output_path, start_date, end_date, company_name, com
         x, y, cx, cy = left, top, Inches(4.5), Inches(3)
         chart = slide3.shapes.add_chart(XL_CHART_TYPE.LINE, x, y, cx, cy, chart_data).chart
         chart.has_legend = True
-        chart.legend.position = XL_LEGEND_POSITION.BOTTOM
-        chart.legend.font.size = Pt(10)
+        chart.legend.position = XL_LEGEND_POSITION.TOP
+        chart.legend.font.size = Pt(12)
         
         # Set chart background and formatting
-        chart.chart_style = 2  # White background
-        chart.plots[0].has_major_gridlines = False
-        chart.plots[0].has_minor_gridlines = False
-        
-        # Set colors for line chart
+        apply_chart_formatting(chart, title="Sentiment Trend Over Time")
         for i, series in enumerate(chart.series):
             series.format.line.color.rgb = SENTIMENT_COLORS[list(SENTIMENT_COLORS.keys())[i]]
             series.format.line.width = Pt(2)
@@ -460,7 +525,7 @@ def create_ppt(data_frames, output_path, start_date, end_date, company_name, com
         logger.debug("Creating donut chart")
         donut_data = ChartData()
         donut_data.categories = ['Positive', 'Neutral', 'Negative']
-        donut_data.add_series('Sentiment Distribution', [
+        donut_data.add_series('', [  # Empty series name to remove text
             sentiment_counts.get(1, 0),
             sentiment_counts.get(0, 0),
             sentiment_counts.get(-1, 0)
@@ -470,7 +535,7 @@ def create_ppt(data_frames, output_path, start_date, end_date, company_name, com
         x, y, cx, cy = left, top, Inches(4.5), Inches(3)
         donut = slide3.shapes.add_chart(XL_CHART_TYPE.DOUGHNUT, x, y, cx, cy, donut_data).chart
         donut.has_legend = True
-        donut.legend.position = XL_LEGEND_POSITION.BOTTOM
+        donut.legend.position = XL_LEGEND_POSITION.TOP
         donut.legend.font.size = Pt(10)
         
         # Set chart background
@@ -488,7 +553,7 @@ def create_ppt(data_frames, output_path, start_date, end_date, company_name, com
         # endregion
 
         # region Fourth slide - Vertical multibar chart
-        logger.debug("Creating third slide with vertical multibar chart")
+        logger.debug("Creating Fourth slide with vertical multibar chart")
         slide4 = prs.slides.add_slide(prs.slide_layouts[5])
         # Remove default textbox
         for shape in slide4.shapes:
@@ -504,8 +569,12 @@ def create_ppt(data_frames, output_path, start_date, end_date, company_name, com
         fill.solid()
         fill.fore_color.rgb = SLIDE_BG_COLOR
         
-        # Get company sentiment data
+        # Get company sentiment data and sort it by total values
         company_sentiments = get_company_sentiment_counts(combined_data)
+        # Calculate total posts for each company
+        totals = company_sentiments.sum(axis=1)
+        # Sort the sentiment data based on totals
+        company_sentiments = company_sentiments.loc[totals.sort_values(ascending=False).index]
         
         chart_data = CategoryChartData()
         chart_data.categories = company_sentiments.index.tolist()
@@ -515,16 +584,65 @@ def create_ppt(data_frames, output_path, start_date, end_date, company_name, com
             if sentiment in company_sentiments.columns:
                 chart_data.add_series(series_name, company_sentiments[sentiment].tolist())
         
-        x, y, cx, cy = Inches(0.5), Inches(1), Inches(9), Inches(5)
-        chart = slide4.shapes.add_chart(XL_CHART_TYPE.COLUMN_CLUSTERED, x, y, cx, cy, chart_data).chart
-        chart.has_legend = True
-        chart.legend.position = XL_LEGEND_POSITION.BOTTOM
-        chart.legend.font.size = Pt(10)
+        # Calculate centered position
+        # Slide width: 13.33", Chart width: 11"
+        # Center horizontally: (13.33 - 11) / 2 = 1.165"
+        # Slide height: 7.5", Header height: 0.8", Chart height: 5"
+        # Center vertically in remaining space: 0.8 + (6.7 - 5) / 2 = 1.65"
+        x = Inches(1.165)
+        y = Inches(1.65)
+        cx = Inches(11)  # Chart width
+        cy = Inches(5)   # Chart height
         
-        # Set chart background and formatting
-        chart.chart_style = 2  # White background
-        chart.plots[0].has_major_gridlines = False
-        chart.plots[0].has_minor_gridlines = False
+        chart = slide4.shapes.add_chart(XL_CHART_TYPE.COLUMN_CLUSTERED, x, y, cx, cy, chart_data).chart
+        
+        # Configure legend
+        chart.has_legend = True
+        chart.legend.position = XL_LEGEND_POSITION.TOP
+        chart.legend.include_in_layout = True
+        chart.legend.font.size = Pt(12)
+        chart.legend.font.bold = True
+        
+        # Set chart title with icon
+        chart.has_title = True
+        chart.chart_title.text_frame.text = "📊 Post saylarına görə bankların bölgüsü"
+        chart.chart_title.text_frame.paragraphs[0].font.size = Pt(14)
+        chart.chart_title.text_frame.paragraphs[0].font.bold = True
+        chart.chart_title.text_frame.paragraphs[0].font.color.rgb = HEADER_TEXT_COLOR  # Red color for title
+        
+        # Set white background for chart
+        chart.chart_style = 2  # White background style
+        
+        # Apply fill to plot area if available and remove gridlines
+        try:
+            if hasattr(chart, 'plot_area'):
+                chart.plot_area.format.fill.solid()
+                chart.plot_area.format.fill.fore_color.rgb = RGBColor(255, 255, 255)
+                
+            # Remove all gridlines
+            # Remove major and minor gridlines from the plot
+            chart.plots[0].has_major_gridlines = False
+            chart.plots[0].has_minor_gridlines = False
+            
+            # Also remove gridlines from both axes
+            if hasattr(chart, 'category_axis') and chart.category_axis:
+                chart.category_axis.has_major_gridlines = False
+                chart.category_axis.has_minor_gridlines = False
+            
+            if hasattr(chart, 'value_axis') and chart.value_axis:
+                chart.value_axis.has_major_gridlines = False
+                chart.value_axis.has_minor_gridlines = False
+            
+            # Remove axis lines
+            chart.category_axis.format.line.fill.background()
+            chart.value_axis.format.line.fill.background()
+        except Exception as e:
+            logger.warning(f"Could not set plot area formatting: {e}")
+        
+        # Set diagonal labels for x-axis
+        if hasattr(chart, 'category_axis'):
+            chart.category_axis.tick_label_position = XL_TICK_LABEL_POSITION.LOW
+            chart.category_axis.text_rotation = 90
         
         # Set axis titles and labels
         if hasattr(chart, 'category_axis'):
@@ -692,7 +810,7 @@ def create_ppt(data_frames, output_path, start_date, end_date, company_name, com
         # endregion
 
         # region Sixth slide - Facebook metrics and sentiment analysis
-        logger.debug("Creating fifth slide with Facebook metrics")
+        logger.debug("Creating Sixth slide with Facebook metrics")
         slide6 = prs.slides.add_slide(prs.slide_layouts[5])
         # Remove default textbox
         for shape in slide6.shapes:
@@ -720,36 +838,70 @@ def create_ppt(data_frames, output_path, start_date, end_date, company_name, com
                 'Total Views': fb_metrics['view_count'].sum()
             }
             
-            # Create separate boxes for each metric
+            # Set up left section (20% width) for metrics
             left = Inches(0.5)
             top = Inches(1)
-            width = Inches(2)
-            height = Inches(0.8)
-            spacing = Inches(0.2)
-            
+            metrics_width = Inches(2.7)  # ~20% of slide width (13.33")
+            metrics_height = Inches(1.2)  # Taller boxes for new layout
+            available_height = Inches(6.5)  # Total height minus header
+            total_items = len(metrics)
+            spacing = (available_height - (metrics_height * total_items)) / (total_items + 1)
+
             for i, (metric, value) in enumerate(metrics.items()):
-                # Add red background shape
-                bg_shape = slide6.shapes.add_shape(
-                    MSO_SHAPE.ROUNDED_RECTANGLE,
-                    left, top + (height + spacing) * i, width, height
-                )
-                bg_shape.fill.solid()
-                bg_shape.fill.fore_color.rgb = RGBColor(255, 0, 0)
+                # Calculate position for current metric box
+                box_top = top + (spacing * (i + 1)) + (metrics_height * i)
                 
-                # Add text box with icon
-                txBox = slide6.shapes.add_textbox(
-                    left + Inches(0.1), 
-                    top + (height + spacing) * i + Inches(0.1), 
-                    width - Inches(0.2), 
-                    height - Inches(0.2)
+                # Add white background box for the whole metric
+                bg_box = slide6.shapes.add_shape(
+                    MSO_SHAPE.ROUNDED_RECTANGLE,
+                    left, box_top, metrics_width, metrics_height
                 )
-                tf = txBox.text_frame
-                p = tf.add_paragraph()
-                p.text = f"{METRIC_ICONS[metric]} {metric}: {value:,}"
-                p.alignment = PP_ALIGN.LEFT
-                p.font.size = Pt(12)
-                p.font.color.rgb = RGBColor(255, 255, 255)  # White text
-        
+                bg_box.fill.solid()
+                bg_box.fill.fore_color.rgb = RGBColor(255, 255, 255)  # White background
+                
+                # Add red background for icon
+                icon_width = Inches(1.0)
+                icon_box = slide6.shapes.add_shape(
+                    MSO_SHAPE.ROUNDED_RECTANGLE,
+                    left, box_top, icon_width, metrics_height
+                )
+                icon_box.fill.solid()
+                icon_box.fill.fore_color.rgb = HEADER_TEXT_COLOR  # Red background
+                
+                # Add icon text
+                icon_text = slide6.shapes.add_textbox(
+                    left, box_top + Inches(0.3), icon_width, Inches(0.6)
+                )
+                icon_p = icon_text.text_frame.add_paragraph()
+                icon_p.text = "📊"
+                icon_p.alignment = PP_ALIGN.CENTER
+                icon_p.font.size = Pt(24)
+                
+                # Add value in large text
+                value_text = slide6.shapes.add_textbox(
+                    left + icon_width + Inches(0.1),
+                    box_top + Inches(0.1),
+                    metrics_width - icon_width - Inches(0.2),
+                    Inches(0.6)
+                )
+                value_p = value_text.text_frame.add_paragraph()
+                value_p.text = f"{value:,}"
+                value_p.alignment = PP_ALIGN.LEFT
+                value_p.font.size = Pt(20)
+                value_p.font.bold = True
+                
+                # Add metric name below value
+                metric_text = slide6.shapes.add_textbox(
+                    left + icon_width + Inches(0.1),
+                    box_top + Inches(0.7),
+                    metrics_width - icon_width - Inches(0.2),
+                    Inches(0.4)
+                )
+                metric_p = metric_text.text_frame.add_paragraph()
+                metric_p.text = metric
+                metric_p.alignment = PP_ALIGN.LEFT
+                metric_p.font.size = Pt(12)
+
         # Right side - Sentiment analysis
         if 'Facebook' in data_frames['combined_sources']:
             fb_sentiment_data = data_frames['combined_sources']['Facebook']
@@ -759,26 +911,56 @@ def create_ppt(data_frames, output_path, start_date, end_date, company_name, com
             sentiment_counts = company_sentiment['Sentiment'].value_counts()
             donut_data = ChartData()
             donut_data.categories = ['Positive', 'Neutral', 'Negative']
-            donut_data.add_series('Sentiment Distribution', [
+            donut_data.add_series('', [
                 sentiment_counts.get(1, 0),
                 sentiment_counts.get(0, 0),
                 sentiment_counts.get(-1, 0)
             ])
             
-            x, y, cx, cy = Inches(3), Inches(1), Inches(3), Inches(3)
-            donut = slide6.shapes.add_chart(XL_CHART_TYPE.DOUGHNUT, x, y, cx, cy, donut_data).chart
-            donut.has_legend = True
-            donut.legend.position = XL_LEGEND_POSITION.BOTTOM
-            donut.legend.font.size = Pt(10)
+            # Start right section (80% width) layout
+            right_section_left = Inches(3.7)  # After left 20% section
+            right_width = Inches(9.13)  # ~80% of slide width
             
+            # Position donut chart in upper left of right section
+            donut_size = Inches(3.5)
+            x = right_section_left
+            y = Inches(1)
+            
+            # Add title for donut chart
+            donut_title = slide6.shapes.add_textbox(
+                x, y, donut_size, Inches(0.3)
+            )
+            title_p = donut_title.text_frame.add_paragraph()
+            title_p.text = "📊 Ümumi sentiment bölgüsü"
+            title_p.font.size = Pt(14)
+            title_p.font.bold = True
+            title_p.font.color.rgb = HEADER_TEXT_COLOR
+            title_p.alignment = PP_ALIGN.CENTER
+            
+            # Position donut chart below title
+            donut = slide6.shapes.add_chart(
+                XL_CHART_TYPE.DOUGHNUT, 
+                x, y + Inches(0.4), 
+                donut_size, donut_size - Inches(0.4), 
+                donut_data
+            ).chart
+            donut.has_legend = True
+            donut.legend.position = XL_LEGEND_POSITION.TOP
+            donut.legend.font.size = Pt(8)  # Reduced legend size
+
             # Set chart background
             donut.chart_style = 2  # White background
             
-            # Set colors for donut chart
+            # Set colors for donut chart and add data labels with arrows
             for i, point in enumerate(donut.series[0].points):
                 point.format.fill.solid()
                 point.format.fill.fore_color.rgb = SENTIMENT_COLORS[list(SENTIMENT_COLORS.keys())[i]]
-            
+                # Add data label with arrow
+                point.has_data_label = True
+                point.data_label.font.size = Pt(10)
+                point.data_label.font.bold = True
+                point.data_label.number_format = '#,##0'
+                
             # Multiline chart
             sentiment_by_date = company_sentiment.groupby('Day')['Sentiment'].value_counts().unstack(fill_value=0)
             chart_data = CategoryChartData()
@@ -789,24 +971,33 @@ def create_ppt(data_frames, output_path, start_date, end_date, company_name, com
                 if sentiment in sentiment_by_date.columns:
                     chart_data.add_series(series_name, sentiment_by_date[sentiment].tolist())
             
-            x, y, cx, cy = Inches(6), Inches(1), Inches(3), Inches(3)
+            # Position multiline chart to right of donut
+            x = right_section_left + donut_size + Inches(0.5)  # After donut chart
+            y = Inches(1.25)
+            cx = right_width - donut_size - Inches(0.3)  # Remaining width
+            cy = donut_size - Inches(0.25)  # Same height as donut
             chart = slide6.shapes.add_chart(XL_CHART_TYPE.LINE, x, y, cx, cy, chart_data).chart
             chart.has_legend = True
-            chart.legend.position = XL_LEGEND_POSITION.BOTTOM
-            chart.legend.font.size = Pt(10)
-            
+            chart.legend.position = XL_LEGEND_POSITION.TOP
+            chart.legend.font.size = Pt(12)
+            chart.has_title = True
+            chart.chart_title.text_frame.text = "📊 Postların zamana və sentimentə görə bölgüsü"
+            paragraph = chart.chart_title.text_frame.paragraphs[0]
+            paragraph.font.size = Pt(14)
+            paragraph.font.bold = True
+            paragraph.font.color.rgb = HEADER_TEXT_COLOR
             # Set chart background and formatting
-            chart.chart_style = 2  # White background
-            chart.plots[0].has_major_gridlines = False
-            chart.plots[0].has_minor_gridlines = False
-            
-            # Set colors for line chart
+            apply_chart_formatting(chart, title="Postların zamana və sentimentə görə bölgüsü")
             for i, series in enumerate(chart.series):
                 series.format.line.color.rgb = SENTIMENT_COLORS[list(SENTIMENT_COLORS.keys())[i]]
                 series.format.line.width = Pt(2)
             
             # Vertical multibar chart
             company_sentiments = fb_sentiment_data.groupby('Company')['Sentiment'].value_counts().unstack(fill_value=0)
+            # Sort by total sentiment values
+            totals = company_sentiments.sum(axis=1)
+            company_sentiments = company_sentiments.loc[totals.sort_values(ascending=False).index]
+
             chart_data = CategoryChartData()
             chart_data.categories = company_sentiments.index.tolist()
             
@@ -815,31 +1006,19 @@ def create_ppt(data_frames, output_path, start_date, end_date, company_name, com
                 if sentiment in company_sentiments.columns:
                     chart_data.add_series(series_name, company_sentiments[sentiment].tolist())
             
-            x, y, cx, cy = Inches(3), Inches(4), Inches(6), Inches(3)
+            # Position multibar chart to span full width of right section
+            x = right_section_left
+            y = Inches(4.5)  # Below upper charts
+            cx = right_width  # Full width of right section
+            cy = Inches(3)  # Remaining height
             chart = slide6.shapes.add_chart(XL_CHART_TYPE.COLUMN_CLUSTERED, x, y, cx, cy, chart_data).chart
             chart.has_legend = True
-            chart.legend.position = XL_LEGEND_POSITION.BOTTOM
-            chart.legend.font.size = Pt(10)
-            
+            chart.legend.position = XL_LEGEND_POSITION.TOP
+            chart.legend.font.size = Pt(12)
+
             # Set chart background and formatting
-            chart.chart_style = 2  # White background
-            chart.plots[0].has_major_gridlines = False
-            chart.plots[0].has_minor_gridlines = False
-            
-            # Set axis titles and labels
-            if hasattr(chart, 'category_axis'):
-                chart.category_axis.tick_labels.font.size = Pt(7)
-                if hasattr(chart.category_axis, 'axis_title') and chart.category_axis.axis_title:
-                    chart.category_axis.axis_title.text_frame.paragraphs[0].font.size = Pt(8)
-            if hasattr(chart, 'value_axis'):
-                chart.value_axis.tick_labels.font.size = Pt(7)
-                if hasattr(chart.value_axis, 'axis_title') and chart.value_axis.axis_title:
-                    chart.value_axis.axis_title.text_frame.paragraphs[0].font.size = Pt(8)
-            
-            # Set colors for bar chart
-            for i, series in enumerate(chart.series):
-                series.format.fill.solid()
-                series.format.fill.fore_color.rgb = SENTIMENT_COLORS[list(SENTIMENT_COLORS.keys())[i]]
+            apply_chart_formatting(chart, title="Post saylarına görə bankların bölgüsü")
+            apply_sentiment_colors(chart)
         # endregion
 
         # region Seventh slide - Facebook metrics table Combines sources
@@ -1046,47 +1225,79 @@ def create_ppt(data_frames, output_path, start_date, end_date, company_name, com
         background = slide9.background
         fill = background.fill
         fill.solid()
-        fill.fore_color.rgb = SLIDE_BG_COLOR
-
-        # Left side - Instagram metrics from official_instagram
+        fill.fore_color.rgb = SLIDE_BG_COLOR            # Left side - Instagram metrics from official_instagram
         if 'official_instagram' in data_frames and len(data_frames['official_instagram']) > 0:
             insta_data = list(data_frames['official_instagram'].values())[0]
             company_metrics = insta_data[insta_data['Company'] == company_name]
             
-            metrics = {
+            network_metrics = {
                 'Total Likes': company_metrics['Likes'].sum(),
                 'Total Comments': company_metrics['Comments'].sum()
             }
             
-            # Create separate boxes for each metric
+            # Set up left section (20% width) for metrics
             left = Inches(0.5)
             top = Inches(1)
-            width = Inches(2)
-            height = Inches(0.8)
-            spacing = Inches(0.2)
-            
-            for i, (metric, value) in enumerate(metrics.items()):
-                # Add red background shape
-                bg_shape = slide9.shapes.add_shape(
-                    MSO_SHAPE.ROUNDED_RECTANGLE,
-                    left, top + (height + spacing) * i, width, height
-                )
-                bg_shape.fill.solid()
-                bg_shape.fill.fore_color.rgb = RGBColor(255, 0, 0)
+            metrics_width = Inches(2.7)  # ~20% of slide width (13.33")
+            metrics_height = Inches(1.2)  # Taller boxes for new layout
+            available_height = Inches(6.5)  # Total height minus header
+            total_items = len(network_metrics)
+            spacing = (available_height - (metrics_height * total_items)) / (total_items + 1)
+
+            for i, (metric, value) in enumerate(network_metrics.items()):
+                # Calculate position for current metric box
+                box_top = top + (spacing * (i + 1)) + (metrics_height * i)
                 
-                # Add text box with icon
-                txBox = slide9.shapes.add_textbox(
-                    left + Inches(0.1), 
-                    top + (height + spacing) * i + Inches(0.1), 
-                    width - Inches(0.2), 
-                    height - Inches(0.2)
+                # Add white background box for the whole metric
+                bg_box = slide9.shapes.add_shape(
+                    MSO_SHAPE.ROUNDED_RECTANGLE,
+                    left, box_top, metrics_width, metrics_height
                 )
-                tf = txBox.text_frame
-                p = tf.add_paragraph()
-                p.text = f"📸 {metric}: {value:,}"
-                p.alignment = PP_ALIGN.LEFT
-                p.font.size = Pt(12)
-                p.font.color.rgb = RGBColor(255, 255, 255)  # White text
+                bg_box.fill.solid()
+                bg_box.fill.fore_color.rgb = RGBColor(255, 255, 255)  # White background
+                
+                # Add red background for icon
+                icon_width = Inches(1.0)
+                icon_box = slide9.shapes.add_shape(
+                    MSO_SHAPE.ROUNDED_RECTANGLE,
+                    left, box_top, icon_width, metrics_height
+                )
+                icon_box.fill.solid()
+                icon_box.fill.fore_color.rgb = HEADER_TEXT_COLOR  # Red background
+                
+                # Add icon text
+                icon_text = slide9.shapes.add_textbox(
+                    left, box_top + Inches(0.3), icon_width, Inches(0.6)
+                )
+                icon_p = icon_text.text_frame.add_paragraph()
+                icon_p.text = "📊"
+                icon_p.alignment = PP_ALIGN.CENTER
+                icon_p.font.size = Pt(24)
+                
+                # Add value in large text
+                value_text = slide9.shapes.add_textbox(
+                    left + icon_width + Inches(0.1),
+                    box_top + Inches(0.1),
+                    metrics_width - icon_width - Inches(0.2),
+                    Inches(0.6)
+                )
+                value_p = value_text.text_frame.add_paragraph()
+                value_p.text = f"{value:,}"
+                value_p.alignment = PP_ALIGN.LEFT
+                value_p.font.size = Pt(20)
+                value_p.font.bold = True
+                
+                # Add metric name below value
+                metric_text = slide9.shapes.add_textbox(
+                    left + icon_width + Inches(0.1),
+                    box_top + Inches(0.7),
+                    metrics_width - icon_width - Inches(0.2),
+                    Inches(0.4)
+                )
+                metric_p = metric_text.text_frame.add_paragraph()
+                metric_p.text = metric
+                metric_p.alignment = PP_ALIGN.LEFT
+                metric_p.font.size = Pt(12)
 
         # Right side - Sentiment analysis from combined_sources
         if 'combined_sources' in data_frames and 'Instagram' in data_frames['combined_sources']:
@@ -1097,26 +1308,55 @@ def create_ppt(data_frames, output_path, start_date, end_date, company_name, com
             sentiment_counts = company_sentiment['Sentiment'].value_counts()
             donut_data = ChartData()
             donut_data.categories = ['Positive', 'Neutral', 'Negative']
-            donut_data.add_series('Sentiment Distribution', [
+            donut_data.add_series('', [  # Empty series name to remove text
                 sentiment_counts.get(1, 0),
                 sentiment_counts.get(0, 0),
                 sentiment_counts.get(-1, 0)
             ])
             
-            x, y, cx, cy = Inches(3), Inches(1), Inches(3), Inches(3)
-            donut = slide9.shapes.add_chart(XL_CHART_TYPE.DOUGHNUT, x, y, cx, cy, donut_data).chart
+            # Right section (80% width) layout
+            right_section_left = Inches(3.7)  # After left 20% section
+            right_width = Inches(9.13)  # 80% of slide width
+            
+            # Position smaller donut chart centered in its section
+            donut_size = Inches(3.5)
+            x = right_section_left
+            y = Inches(1)
+            
+            # Add title for donut chart
+            donut_title = slide9.shapes.add_textbox(
+                x, y, donut_size, Inches(0.3)
+            )
+            title_p = donut_title.text_frame.add_paragraph()
+            title_p.text = "📊 Ümumi sentiment bölgüsü"
+            title_p.font.size = Pt(14)
+            title_p.font.bold = True
+            title_p.font.color.rgb = HEADER_TEXT_COLOR
+            title_p.alignment = PP_ALIGN.CENTER
+            
+            # Position donut chart below title
+            donut = slide9.shapes.add_chart(
+                XL_CHART_TYPE.DOUGHNUT, 
+                x, y + Inches(0.4), 
+                donut_size, donut_size - Inches(0.4), 
+                donut_data
+            ).chart
             donut.has_legend = True
-            donut.legend.position = XL_LEGEND_POSITION.BOTTOM
-            donut.legend.font.size = Pt(10)
+            donut.legend.position = XL_LEGEND_POSITION.TOP
+            donut.legend.font.size = Pt(8)  # Reduced legend size
             
             # Set chart background
             donut.chart_style = 2  # White background
             
-            # Set colors for donut chart
             for i, point in enumerate(donut.series[0].points):
                 point.format.fill.solid()
                 point.format.fill.fore_color.rgb = SENTIMENT_COLORS[list(SENTIMENT_COLORS.keys())[i]]
-            
+                # Add data label with arrow
+                point.has_data_label = True
+                point.data_label.font.size = Pt(10)
+                point.data_label.font.bold = True
+                point.data_label.number_format = '#,##0'
+                
             # Multiline chart
             sentiment_by_date = company_sentiment.groupby('Day')['Sentiment'].value_counts().unstack(fill_value=0)
             chart_data = CategoryChartData()
@@ -1127,18 +1367,22 @@ def create_ppt(data_frames, output_path, start_date, end_date, company_name, com
                 if sentiment in sentiment_by_date.columns:
                     chart_data.add_series(series_name, sentiment_by_date[sentiment].tolist())
             
-            x, y, cx, cy = Inches(6), Inches(1), Inches(3), Inches(3)
+            x = right_section_left + donut_size + Inches(0.5)  # After donut chart
+            y = Inches(1.25)
+            cx = right_width - donut_size - Inches(0.5)  # Remaining width
+            cy = donut_size - Inches(0.25)  # Same height as donut
             chart = slide9.shapes.add_chart(XL_CHART_TYPE.LINE, x, y, cx, cy, chart_data).chart
             chart.has_legend = True
-            chart.legend.position = XL_LEGEND_POSITION.BOTTOM
-            chart.legend.font.size = Pt(10)
-            
+            chart.legend.position = XL_LEGEND_POSITION.TOP
+            chart.legend.font.size = Pt(12)
+            chart.has_title = True
+            chart.chart_title.text_frame.text = "📊 Postların zamana və sentimentə görə bölgüsü"
+            paragraph = chart.chart_title.text_frame.paragraphs[0]
+            paragraph.font.size = Pt(14)
+            paragraph.font.bold = True
+            paragraph.font.color.rgb = HEADER_TEXT_COLOR
             # Set chart background and formatting
-            chart.chart_style = 2  # White background
-            chart.plots[0].has_major_gridlines = False
-            chart.plots[0].has_minor_gridlines = False
-            
-            # Set colors for line chart
+            apply_chart_formatting(chart, title="Postların zamana və sentimentə görə bölgüsü")
             for i, series in enumerate(chart.series):
                 series.format.line.color.rgb = SENTIMENT_COLORS[list(SENTIMENT_COLORS.keys())[i]]
                 series.format.line.width = Pt(2)
@@ -1146,6 +1390,9 @@ def create_ppt(data_frames, output_path, start_date, end_date, company_name, com
             # Vertical multibar chart for Instagram company sentiment comparison
             insta_sentiment_data = insta_sentiment_data[insta_sentiment_data['Sentiment'].isin([-1, 0, 1])]
             company_sentiments = insta_sentiment_data.groupby('Company')['Sentiment'].value_counts().unstack(fill_value=0)
+            # Sort by total sentiment values
+            totals = company_sentiments.sum(axis=1)
+            company_sentiments = company_sentiments.loc[totals.sort_values(ascending=False).index]
 
             chart_data = CategoryChartData()
             chart_data.categories = company_sentiments.index.tolist()
@@ -1155,31 +1402,19 @@ def create_ppt(data_frames, output_path, start_date, end_date, company_name, com
                 if sentiment in company_sentiments.columns:
                     chart_data.add_series(series_name, company_sentiments[sentiment].tolist())
 
-            x, y, cx, cy = Inches(3), Inches(4), Inches(6), Inches(3)
+            # Position multibar chart to take full width of right section
+            x = right_section_left
+            y = Inches(4.5)  # Position below the top charts
+            cx = right_width  # Full width of right section
+            cy = Inches(3)  # Height
             chart = slide9.shapes.add_chart(XL_CHART_TYPE.COLUMN_CLUSTERED, x, y, cx, cy, chart_data).chart
             chart.has_legend = True
-            chart.legend.position = XL_LEGEND_POSITION.BOTTOM
-            chart.legend.font.size = Pt(10)
+            chart.legend.position = XL_LEGEND_POSITION.TOP
+            chart.legend.font.size = Pt(12)
 
             # Set chart background and formatting
-            chart.chart_style = 2  # White background
-            chart.plots[0].has_major_gridlines = False
-            chart.plots[0].has_minor_gridlines = False
-
-            # Set axis titles and labels
-            if hasattr(chart, 'category_axis'):
-                chart.category_axis.tick_labels.font.size = Pt(7)
-                if hasattr(chart.category_axis, 'axis_title') and chart.category_axis.axis_title:
-                    chart.category_axis.axis_title.text_frame.paragraphs[0].font.size = Pt(8)
-            if hasattr(chart, 'value_axis'):
-                chart.value_axis.tick_labels.font.size = Pt(7)
-                if hasattr(chart.value_axis, 'axis_title') and chart.value_axis.axis_title:
-                    chart.value_axis.axis_title.text_frame.paragraphs[0].font.size = Pt(8)
-
-            # Set colors for bar chart
-            for i, series in enumerate(chart.series):
-                series.format.fill.solid()
-                series.format.fill.fore_color.rgb = SENTIMENT_COLORS[list(SENTIMENT_COLORS.keys())[i]]
+            apply_sentiment_colors(chart)
+            apply_chart_formatting(chart, title="Post saylarına görə bankların bölgüsü")
         # endregion
 
         # region Tenth slide - Linkedin sentiment analysis
@@ -1203,31 +1438,62 @@ def create_ppt(data_frames, output_path, start_date, end_date, company_name, com
             company_sentiment = linkedin_data[linkedin_data['Company'] == company_name]
             
             if not company_sentiment.empty:
-                # Donut chart
+                # Calculate heights accounting for header
+                available_height = Inches(7.5 - HEADER_HEIGHT)  # Total height minus header
+                half_height = available_height / 2
+                
+                # Top half section for donut and line charts
+                donut_size = Inches(3.5)
+                
+                # Donut chart on left top half
+                x_donut = Inches(0.5)
+                y_donut = Inches(1.2)  # Just below header
+                
+                # Add title for donut chart
+                donut_title = slide10.shapes.add_textbox(
+                    x_donut, y_donut, donut_size, Inches(0.3)
+                )
+                title_p = donut_title.text_frame.add_paragraph()
+                title_p.text = "📊 Postların sentiment bölgüsü"
+                title_p.font.size = Pt(14)
+                title_p.font.bold = True
+                title_p.font.color.rgb = HEADER_TEXT_COLOR
+                title_p.alignment = PP_ALIGN.CENTER
+                
+                # Add donut chart below its title
                 sentiment_counts = company_sentiment['Sentiment'].value_counts()
                 donut_data = ChartData()
                 donut_data.categories = ['Positive', 'Neutral', 'Negative']
-                donut_data.add_series('Sentiment Distribution', [
+                donut_data.add_series('', [
                     sentiment_counts.get(1, 0),
                     sentiment_counts.get(0, 0),
                     sentiment_counts.get(-1, 0)
                 ])
                 
-                x, y, cx, cy = Inches(0.5), Inches(1), Inches(4), Inches(4)
-                donut = slide10.shapes.add_chart(XL_CHART_TYPE.DOUGHNUT, x, y, cx, cy, donut_data).chart
-                donut.has_legend = True
-                donut.legend.position = XL_LEGEND_POSITION.BOTTOM
-                donut.legend.font.size = Pt(10)
+                donut = slide10.shapes.add_chart(
+                    XL_CHART_TYPE.DOUGHNUT, 
+                    x_donut, 
+                    y_donut + Inches(0.4),
+                    donut_size, 
+                    donut_size - Inches(0.4),
+                    donut_data
+                ).chart
                 
-                # Set chart background
+                donut.has_legend = True
+                donut.legend.position = XL_LEGEND_POSITION.TOP
+                donut.legend.font.size = Pt(10)
                 donut.chart_style = 2  # White background
                 
-                # Set colors for donut chart
+                # Apply colors and data labels to donut chart
                 for i, point in enumerate(donut.series[0].points):
                     point.format.fill.solid()
                     point.format.fill.fore_color.rgb = SENTIMENT_COLORS[list(SENTIMENT_COLORS.keys())[i]]
+                    point.has_data_label = True
+                    point.data_label.font.size = Pt(10)
+                    point.data_label.font.bold = True
+                    point.data_label.number_format = '#,##0'
                 
-                # Multiline chart
+                # Multiline chart in right half
                 sentiment_by_date = company_sentiment.groupby('Day')['Sentiment'].value_counts().unstack(fill_value=0)
                 chart_data = CategoryChartData()
                 chart_data.categories = sentiment_by_date.index.tolist()
@@ -1237,75 +1503,76 @@ def create_ppt(data_frames, output_path, start_date, end_date, company_name, com
                     if sentiment in sentiment_by_date.columns:
                         chart_data.add_series(series_name, sentiment_by_date[sentiment].tolist())
                 
-                x, y, cx, cy = Inches(5), Inches(1), Inches(4.5), Inches(4)
-                chart = slide10.shapes.add_chart(XL_CHART_TYPE.LINE, x, y, cx, cy, chart_data).chart
+                # Position multiline chart in right half of top section
+                x_line = Inches(4.5)  # Start after donut chart
+                y_line = Inches(1.2)  # Same vertical alignment as donut
+                cx_line = Inches(8.33)  # Remaining width
+                cy_line = donut_size  # Same height as donut
+                
+                chart = slide10.shapes.add_chart(
+                    XL_CHART_TYPE.LINE,
+                    x_line, y_line,
+                    cx_line, cy_line,
+                    chart_data
+                ).chart
+                
+                # Format line chart
                 chart.has_legend = True
-                chart.legend.position = XL_LEGEND_POSITION.BOTTOM
-                chart.legend.font.size = Pt(10)
+                chart.legend.position = XL_LEGEND_POSITION.TOP
+                chart.legend.font.size = Pt(12)
                 
                 # Set chart background and formatting
-                chart.chart_style = 2  # White background
-                chart.plots[0].has_major_gridlines = False
-                chart.plots[0].has_minor_gridlines = False
-                
-                # Set colors for line chart
+                # Set colors for donut chart
+                for i, point in enumerate(donut.series[0].points):
+                    point.format.fill.solid()
+                    point.format.fill.fore_color.rgb = SENTIMENT_COLORS[list(SENTIMENT_COLORS.keys())[i]]
+                apply_chart_formatting(chart, title="Postların zamana və sentimentə görə bölgüsü")
                 for i, series in enumerate(chart.series):
                     series.format.line.color.rgb = SENTIMENT_COLORS[list(SENTIMENT_COLORS.keys())[i]]
                     series.format.line.width = Pt(2)
-                
-                # Set axis titles and labels
-                if hasattr(chart, 'category_axis'):
-                    chart.category_axis.tick_labels.font.size = Pt(7)
-                    if hasattr(chart.category_axis, 'axis_title') and chart.category_axis.axis_title:
-                        chart.category_axis.axis_title.text_frame.paragraphs[0].font.size = Pt(8)
-                if hasattr(chart, 'value_axis'):
-                    chart.value_axis.tick_labels.font.size = Pt(7)
-                    if hasattr(chart.value_axis, 'axis_title') and chart.value_axis.axis_title:
-                        chart.value_axis.axis_title.text_frame.paragraphs[0].font.size = Pt(8)
                 # Vertical multibar chart for LinkedIn company sentiment comparison
                 linkedin_data = linkedin_data[linkedin_data['Sentiment'].isin([-1, 0, 1])]
                 company_sentiments = linkedin_data.groupby('Company')['Sentiment'].value_counts().unstack(fill_value=0)
-
+                
+                # Sort by total sentiment values
+                totals = company_sentiments.sum(axis=1)
+                company_sentiments = company_sentiments.loc[totals.sort_values(ascending=False).index]
+                
                 chart_data = CategoryChartData()
                 chart_data.categories = company_sentiments.index.tolist()
-
+                
                 for sentiment in [1, 0, -1]:
                     series_name = "Positive" if sentiment == 1 else "Neutral" if sentiment == 0 else "Negative"
                     if sentiment in company_sentiments.columns:
                         chart_data.add_series(series_name, company_sentiments[sentiment].tolist())
-
-                x, y, cx, cy = Inches(0.5), Inches(5), Inches(9), Inches(3)
-                chart = slide10.shapes.add_chart(XL_CHART_TYPE.COLUMN_CLUSTERED, x, y, cx, cy, chart_data).chart
+                
+                # Position multibar chart in bottom half, full width
+                x_bar = Inches(0.5)
+                y_bar = Inches(4.5)  # Start below top section
+                cx_bar = Inches(12.33)  # Full width
+                cy_bar = Inches(2.5)  # Remaining height
+                
+                chart = slide10.shapes.add_chart(
+                    XL_CHART_TYPE.COLUMN_CLUSTERED,
+                    x_bar, y_bar,
+                    cx_bar, cy_bar,
+                    chart_data
+                ).chart
+                
                 chart.has_legend = True
-                chart.legend.position = XL_LEGEND_POSITION.BOTTOM
-                chart.legend.font.size = Pt(10)
-
-                # Set chart background and formatting
-                chart.chart_style = 2  # White background
-                chart.plots[0].has_major_gridlines = False
-                chart.plots[0].has_minor_gridlines = False
-
-                # Set axis titles and labels
-                if hasattr(chart, 'category_axis'):
-                    chart.category_axis.tick_labels.font.size = Pt(7)
-                    if hasattr(chart.category_axis, 'axis_title') and chart.category_axis.axis_title:
-                        chart.category_axis.axis_title.text_frame.paragraphs[0].font.size = Pt(8)
-                if hasattr(chart, 'value_axis'):
-                    chart.value_axis.tick_labels.font.size = Pt(7)
-                    if hasattr(chart.value_axis, 'axis_title') and chart.value_axis.axis_title:
-                        chart.value_axis.axis_title.text_frame.paragraphs[0].font.size = Pt(8)
-
-                # Set colors for bar chart
-                for i, series in enumerate(chart.series):
-                    series.format.fill.solid()
-                    series.format.fill.fore_color.rgb = SENTIMENT_COLORS[list(SENTIMENT_COLORS.keys())[i]]
-
+                chart.legend.position = XL_LEGEND_POSITION.TOP
+                chart.legend.font.size = Pt(12)
+                
+                # Apply formatting and colors
+                apply_chart_formatting(chart)
+                apply_sentiment_colors(chart)
+                apply_chart_formatting(chart, title="Post saylarına görə bankların bölgüsü")
             else:
                 logger.warning(f"No Linkedin data found for company: {company_name}")
         # endregion
 
         # region Eleventh slide - Positive and Negative Posts
-        logger.debug("Creating ninth slide with positive and negative posts")
+        logger.debug("Creating Eleventh slide with positive and negative posts")
         slide11 = prs.slides.add_slide(prs.slide_layouts[5])
         # Remove default textbox
         for shape in slide11.shapes:
@@ -1323,6 +1590,8 @@ def create_ppt(data_frames, output_path, start_date, end_date, company_name, com
         def add_post(slide, post, left, top):
             if not os.path.exists(post["image_path"]):
                 return 0
+
+           
 
             # Add image and get actual height
             img = slide.shapes.add_picture(post["image_path"], left, top, width=image_width)
