@@ -1824,22 +1824,6 @@ def create_ppt(data_frames, output_path, start_date, end_date, company_name, com
         stick_left = clue_card_left + clue_card_width - stick_size / 2  # Half outside right edge
         stick_top = clue_card_top - stick_size / 2  # Half outside top edge
 
-        # Create stick icon using a rounded rectangle
-        stick_icon = slide11.shapes.add_shape(
-            MSO_SHAPE.ROUNDED_RECTANGLE,
-            stick_left, stick_top, stick_size, stick_size
-        )
-        stick_icon.fill.solid()
-        stick_icon.fill.fore_color.rgb = HEADER_TEXT_COLOR
-        stick_icon.line.color.rgb = RGBColor(220, 165, 0)
-        stick_icon.line.width = Inches(0.008)
-
-        # Add shadow to stick
-        stick_icon.shadow.inherit = False
-        stick_icon.shadow.blur_radius = 2000
-        stick_icon.shadow.distance = 1500
-        stick_icon.shadow.angle = 45
-
         # Add stick icon text (using a pin/stick emoji or symbol)
         stick_text = slide11.shapes.add_textbox(
             stick_left, stick_top, stick_size, stick_size
@@ -1852,8 +1836,9 @@ def create_ppt(data_frames, output_path, start_date, end_date, company_name, com
 
         stick_p = stick_tf.paragraphs[0]
         stick_p.text = "📌"  # Pin/stick emoji
-        stick_p.font.size = Pt(16)
+        stick_p.font.size = Pt(24)
         stick_p.alignment = PP_ALIGN.CENTER
+        stick_p.font.color.rgb = HEADER_TEXT_COLOR
 
         # Clue text (adjusted for better positioning)
         clue_text = slide11.shapes.add_textbox(
