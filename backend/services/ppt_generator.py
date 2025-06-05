@@ -3,7 +3,7 @@ from pptx.util import Inches, Pt
 from pptx.chart.data import CategoryChartData, ChartData
 from pptx.enum.chart import XL_CHART_TYPE, XL_LEGEND_POSITION, XL_TICK_LABEL_POSITION, XL_DATA_LABEL_POSITION
 from pptx.dml.color import RGBColor
-from pptx.enum.text import PP_ALIGN
+from pptx.enum.text import PP_ALIGN, MSO_ANCHOR, MSO_AUTO_SIZE
 from pptx.enum.shapes import MSO_SHAPE
 from services.excel_parser import get_sentiment_counts, get_company_sentiment_counts
 import logging
@@ -164,7 +164,8 @@ def apply_sentiment_colors(chart):
         series.format.fill.solid()
         # The series order should match [1, 0, -1] for [Positive, Neutral, Negative]
         sentiment_value = [1, 0, -1][i]
-        series.format.fill.fore_color.rgb = SENTIMENT_COLORS[sentiment_value]
+        # series.format.fill.fore_color.rgb = SENTIMENT_COLORS[sentiment_value]
+        series.format.fill.fore_color.rgb = SENTIMENT_COLORS[list(SENTIMENT_COLORS.keys())[i]]
 
 def create_ppt(data_frames, output_path, start_date, end_date, company_name, company_logo_path, mediaeye_logo_path, neurotime_logo_path, competitor_logo_paths=None, positive_links=None, negative_links=None, positive_posts=None, negative_posts=None):
     try:
@@ -533,10 +534,21 @@ def create_ppt(data_frames, output_path, start_date, end_date, company_name, com
         
         left, top = bottom_right
         x, y, cx, cy = left, top, Inches(4.5), Inches(3)
+        # Add title for donut chart
+        donut_title = slide3.shapes.add_textbox(
+            x, y, cx, Inches(0.3)
+        )
+
         donut = slide3.shapes.add_chart(XL_CHART_TYPE.DOUGHNUT, x, y, cx, cy, donut_data).chart
         donut.has_legend = True
         donut.legend.position = XL_LEGEND_POSITION.TOP
         donut.legend.font.size = Pt(10)
+
+        donut.has_title = True
+        donut.chart_title.text_frame.text = "📊 Bank postlarının sentiment bölgüsü"
+        donut.chart_title.text_frame.paragraphs[0].font.size = Pt(14)
+        donut.chart_title.text_frame.paragraphs[0].font.bold = True
+        donut.chart_title.text_frame.paragraphs[0].font.color.rgb = HEADER_TEXT_COLOR  # Red color for title
         
         # Set chart background
         donut.chart_style = 2  # White background
@@ -829,79 +841,110 @@ def create_ppt(data_frames, output_path, start_date, end_date, company_name, com
         if 'official_facebook' in data_frames and len(data_frames['official_facebook']) > 0:
             fb_data = list(data_frames['official_facebook'].values())[0]
             fb_metrics = fb_data[fb_data['author_name'] == company_name]
-            
-            metrics = {
-                'Posts Count': len(fb_metrics),
-                'Total Comments': fb_metrics['comment_count'].sum(),
-                'Total Likes': fb_metrics['like_count'].sum(),
-                'Total Shares': fb_metrics['share_count'].sum(),
-                'Total Views': fb_metrics['view_count'].sum()
-            }
-            
-            # Set up left section (20% width) for metrics
-            left = Inches(0.5)
-            top = Inches(1)
-            metrics_width = Inches(2.7)  # ~20% of slide width (13.33")
-            metrics_height = Inches(1.2)  # Taller boxes for new layout
-            available_height = Inches(6.5)  # Total height minus header
-            total_items = len(metrics)
-            spacing = (available_height - (metrics_height * total_items)) / (total_items + 1)
 
-            for i, (metric, value) in enumerate(metrics.items()):
-                # Calculate position for current metric box
-                box_top = top + (spacing * (i + 1)) + (metrics_height * i)
-                
-                # Add white background box for the whole metric
-                bg_box = slide6.shapes.add_shape(
-                    MSO_SHAPE.ROUNDED_RECTANGLE,
-                    left, box_top, metrics_width, metrics_height
-                )
-                bg_box.fill.solid()
-                bg_box.fill.fore_color.rgb = RGBColor(255, 255, 255)  # White background
-                
-                # Add red background for icon
-                icon_width = Inches(1.0)
-                icon_box = slide6.shapes.add_shape(
-                    MSO_SHAPE.ROUNDED_RECTANGLE,
-                    left, box_top, icon_width, metrics_height
-                )
-                icon_box.fill.solid()
-                icon_box.fill.fore_color.rgb = HEADER_TEXT_COLOR  # Red background
-                
-                # Add icon text
-                icon_text = slide6.shapes.add_textbox(
-                    left, box_top + Inches(0.3), icon_width, Inches(0.6)
-                )
-                icon_p = icon_text.text_frame.add_paragraph()
-                icon_p.text = "📊"
-                icon_p.alignment = PP_ALIGN.CENTER
-                icon_p.font.size = Pt(24)
-                
-                # Add value in large text
-                value_text = slide6.shapes.add_textbox(
-                    left + icon_width + Inches(0.1),
-                    box_top + Inches(0.1),
-                    metrics_width - icon_width - Inches(0.2),
-                    Inches(0.6)
-                )
-                value_p = value_text.text_frame.add_paragraph()
-                value_p.text = f"{value:,}"
-                value_p.alignment = PP_ALIGN.LEFT
-                value_p.font.size = Pt(20)
-                value_p.font.bold = True
-                
-                # Add metric name below value
-                metric_text = slide6.shapes.add_textbox(
-                    left + icon_width + Inches(0.1),
-                    box_top + Inches(0.7),
-                    metrics_width - icon_width - Inches(0.2),
-                    Inches(0.4)
-                )
-                metric_p = metric_text.text_frame.add_paragraph()
-                metric_p.text = metric
-                metric_p.alignment = PP_ALIGN.LEFT
-                metric_p.font.size = Pt(12)
+        metrics = {
+            'Post sayı': len(fb_metrics),
+            'Şərh sayı': fb_metrics['comment_count'].sum(),
+            'Bəyənmə sayı': fb_metrics['like_count'].sum(),
+            'Paylaşım sayı': fb_metrics['share_count'].sum(),
+            'Baxış sayı': fb_metrics['view_count'].sum()
+        }
 
+        # Icon mapping for each metric
+        metric_icons = {
+            'Post sayı': '📝',
+            'Şərh sayı': '💬',
+            'Bəyənmə sayı': '👍',
+            'Paylaşım sayı': '🔄',
+            'Baxış sayı': '👁️'
+        }
+
+        left = Inches(0.5)
+        header_height = Inches(0.8)
+        top = header_height + Inches(0.2)  # Start below header with small margin
+        metrics_width = Inches(2.2)
+        metrics_height = Inches(1.0)  # Reduced from 1.2 to fit better
+        slide_height = Inches(7.5)  # Standard slide height
+        available_height = slide_height - header_height - Inches(0.4)  # Bottom margin
+        total_items = len(metrics)
+
+        # Increased spacing between cards
+        card_spacing = Inches(0.3)  # Space between cards
+        total_cards_height = metrics_height * total_items
+        total_spacing_height = card_spacing * (total_items - 1)
+        remaining_space = available_height - total_cards_height - total_spacing_height
+        top_margin = remaining_space / 2
+
+        for i, (metric, value) in enumerate(metrics.items()):
+            box_top = top + top_margin + (metrics_height * i) + (card_spacing * i)
+            
+            # White background card
+            bg_box = slide6.shapes.add_shape(
+                MSO_SHAPE.ROUNDED_RECTANGLE,
+                left, box_top, metrics_width, metrics_height
+            )
+            bg_box.fill.solid()
+            bg_box.fill.fore_color.rgb = RGBColor(255, 255, 255)
+            bg_box.line.fill.background()  # Remove border
+            
+            # Red icon background (adjusted for new card height)
+            icon_width = Inches(0.5)  # Slightly reduced to fit new card height
+            icon_height = Inches(0.5)  # Slightly reduced to fit new card height
+            icon_left = left + Inches(0.1)
+            icon_top = box_top + (metrics_height - icon_height) / 2  # Centered vertically
+            
+            icon_box = slide6.shapes.add_shape(
+                MSO_SHAPE.ROUNDED_RECTANGLE,
+                icon_left, icon_top, icon_width, icon_height
+            )
+            icon_box.fill.solid()
+            icon_box.fill.fore_color.rgb = HEADER_TEXT_COLOR
+            icon_box.line.fill.background()  # Remove border
+            
+            # Icon text (white, centered inside red bg)
+            icon_text = slide6.shapes.add_textbox(
+                icon_left, icon_top, icon_width, icon_height
+            )
+            icon_frame = icon_text.text_frame
+            icon_frame.clear()
+            icon_frame.margin_top = Inches(0)
+            icon_frame.margin_bottom = Inches(0)
+            icon_frame.vertical_anchor = MSO_ANCHOR.MIDDLE  # Center vertically
+            
+            icon_p = icon_frame.paragraphs[0]
+            icon_p.text = metric_icons.get(metric, "📊")  # Use specific icon or default
+            icon_p.alignment = PP_ALIGN.CENTER
+            icon_p.font.size = Pt(22)  # Adjusted for smaller icon box
+            icon_p.font.color.rgb = RGBColor(255, 255, 255)
+            
+            # Combined value + metric label, vertically centered inside white bg
+            text_left = icon_left + icon_width + Inches(0.15)
+            text_width = metrics_width - icon_width - Inches(0.25)
+            
+            value_textbox = slide6.shapes.add_textbox(
+                text_left, box_top, text_width, metrics_height
+            )
+            tf = value_textbox.text_frame
+            tf.clear()
+            tf.margin_top = Inches(0)
+            tf.margin_bottom = Inches(0)
+            tf.vertical_anchor = MSO_ANCHOR.MIDDLE  # Center content vertically
+            
+            # Big number
+            value_p = tf.paragraphs[0]
+            value_p.text = f"{value:,}"
+            value_p.alignment = PP_ALIGN.LEFT
+            value_p.font.size = Pt(24)  # Reduced from 26 to fit smaller cards
+            value_p.font.bold = True
+            value_p.font.color.rgb = RGBColor(51, 51, 51)  # Dark gray for better readability
+            
+            # Metric name
+            metric_p = tf.add_paragraph()
+            metric_p.text = metric
+            metric_p.alignment = PP_ALIGN.LEFT
+            metric_p.font.size = Pt(11)  # Reduced from 12 to fit smaller cards
+            metric_p.font.color.rgb = RGBColor(102, 102, 102)  # Medium gray
+            
         # Right side - Sentiment analysis
         if 'Facebook' in data_frames['combined_sources']:
             fb_sentiment_data = data_frames['combined_sources']['Facebook']
@@ -924,30 +967,26 @@ def create_ppt(data_frames, output_path, start_date, end_date, company_name, com
             # Position donut chart in upper left of right section
             donut_size = Inches(3.5)
             x = right_section_left
-            y = Inches(1)
-            
-            # Add title for donut chart
-            donut_title = slide6.shapes.add_textbox(
-                x, y, donut_size, Inches(0.3)
-            )
-            title_p = donut_title.text_frame.add_paragraph()
-            title_p.text = "📊 Ümumi sentiment bölgüsü"
-            title_p.font.size = Pt(14)
-            title_p.font.bold = True
-            title_p.font.color.rgb = HEADER_TEXT_COLOR
-            title_p.alignment = PP_ALIGN.CENTER
+            y = Inches(1.2)
             
             # Position donut chart below title
             donut = slide6.shapes.add_chart(
                 XL_CHART_TYPE.DOUGHNUT, 
-                x, y + Inches(0.4), 
+                x, y, 
                 donut_size, donut_size - Inches(0.4), 
                 donut_data
             ).chart
             donut.has_legend = True
+            donut.has_title = False
             donut.legend.position = XL_LEGEND_POSITION.TOP
             donut.legend.font.size = Pt(8)  # Reduced legend size
 
+            donut.has_title = True
+            donut.chart_title.text_frame.text = "📊 Ümumi sentiment bölgüsü"
+            donut.chart_title.text_frame.paragraphs[0].font.size = Pt(14)
+            donut.chart_title.text_frame.paragraphs[0].font.bold = True
+            donut.chart_title.text_frame.paragraphs[0].font.color.rgb = HEADER_TEXT_COLOR  # Red color for title
+            
             # Set chart background
             donut.chart_style = 2  # White background
             
@@ -1229,76 +1268,105 @@ def create_ppt(data_frames, output_path, start_date, end_date, company_name, com
         if 'official_instagram' in data_frames and len(data_frames['official_instagram']) > 0:
             insta_data = list(data_frames['official_instagram'].values())[0]
             company_metrics = insta_data[insta_data['Company'] == company_name]
-            
-            network_metrics = {
-                'Total Likes': company_metrics['Likes'].sum(),
-                'Total Comments': company_metrics['Comments'].sum()
-            }
-            
-            # Set up left section (20% width) for metrics
-            left = Inches(0.5)
-            top = Inches(1)
-            metrics_width = Inches(2.7)  # ~20% of slide width (13.33")
-            metrics_height = Inches(1.2)  # Taller boxes for new layout
-            available_height = Inches(6.5)  # Total height minus header
-            total_items = len(network_metrics)
-            spacing = (available_height - (metrics_height * total_items)) / (total_items + 1)
+            # Icon mapping for network metrics
 
-            for i, (metric, value) in enumerate(network_metrics.items()):
-                # Calculate position for current metric box
-                box_top = top + (spacing * (i + 1)) + (metrics_height * i)
-                
-                # Add white background box for the whole metric
-                bg_box = slide9.shapes.add_shape(
-                    MSO_SHAPE.ROUNDED_RECTANGLE,
-                    left, box_top, metrics_width, metrics_height
-                )
-                bg_box.fill.solid()
-                bg_box.fill.fore_color.rgb = RGBColor(255, 255, 255)  # White background
-                
-                # Add red background for icon
-                icon_width = Inches(1.0)
-                icon_box = slide9.shapes.add_shape(
-                    MSO_SHAPE.ROUNDED_RECTANGLE,
-                    left, box_top, icon_width, metrics_height
-                )
-                icon_box.fill.solid()
-                icon_box.fill.fore_color.rgb = HEADER_TEXT_COLOR  # Red background
-                
-                # Add icon text
-                icon_text = slide9.shapes.add_textbox(
-                    left, box_top + Inches(0.3), icon_width, Inches(0.6)
-                )
-                icon_p = icon_text.text_frame.add_paragraph()
-                icon_p.text = "📊"
-                icon_p.alignment = PP_ALIGN.CENTER
-                icon_p.font.size = Pt(24)
-                
-                # Add value in large text
-                value_text = slide9.shapes.add_textbox(
-                    left + icon_width + Inches(0.1),
-                    box_top + Inches(0.1),
-                    metrics_width - icon_width - Inches(0.2),
-                    Inches(0.6)
-                )
-                value_p = value_text.text_frame.add_paragraph()
-                value_p.text = f"{value:,}"
-                value_p.alignment = PP_ALIGN.LEFT
-                value_p.font.size = Pt(20)
-                value_p.font.bold = True
-                
-                # Add metric name below value
-                metric_text = slide9.shapes.add_textbox(
-                    left + icon_width + Inches(0.1),
-                    box_top + Inches(0.7),
-                    metrics_width - icon_width - Inches(0.2),
-                    Inches(0.4)
-                )
-                metric_p = metric_text.text_frame.add_paragraph()
-                metric_p.text = metric
-                metric_p.alignment = PP_ALIGN.LEFT
-                metric_p.font.size = Pt(12)
+        network_metrics = {
+            'Bəyənmə sayı': company_metrics['Likes'].sum(),
+            'Şərh sayı': company_metrics['Comments'].sum()
+        }
+        network_metric_icons = {
+            'Bəyənmə sayı': '👍',
+            'Şərh sayı': '💬'
+        }
 
+        # Set up left section (20% width) for metrics
+        left = Inches(0.5)
+        header_height = Inches(0.8)
+        top = header_height + Inches(0.2)  # Start below header with small margin
+        metrics_width = Inches(2.7)  # ~20% of slide width (13.33")
+        metrics_height = Inches(1.0)  # Reduced height to fit better
+        slide_height = Inches(7.5)  # Standard slide height
+        available_height = slide_height - header_height - Inches(0.4)  # Bottom margin
+        total_items = len(network_metrics)
+
+        # Increased spacing between cards
+        card_spacing = Inches(0.3)  # Space between cards
+        total_cards_height = metrics_height * total_items
+        total_spacing_height = card_spacing * (total_items - 1)
+        remaining_space = available_height - total_cards_height - total_spacing_height
+        top_margin = remaining_space / 2
+
+        for i, (metric, value) in enumerate(network_metrics.items()):
+            # Calculate position for current metric box
+            box_top = top + top_margin + (metrics_height * i) + (card_spacing * i)
+            
+            # Add white background box for the whole metric
+            bg_box = slide9.shapes.add_shape(
+                MSO_SHAPE.ROUNDED_RECTANGLE,
+                left, box_top, metrics_width, metrics_height
+            )
+            bg_box.fill.solid()
+            bg_box.fill.fore_color.rgb = RGBColor(255, 255, 255)  # White background
+            bg_box.line.fill.background()  # Remove border
+            
+            # Add red background for icon (square, centered vertically)
+            icon_width = Inches(0.5)
+            icon_height = Inches(0.5)
+            icon_left = left + Inches(0.1)
+            icon_top = box_top + (metrics_height - icon_height) / 2  # Centered vertically
+            
+            icon_box = slide9.shapes.add_shape(
+                MSO_SHAPE.ROUNDED_RECTANGLE,
+                icon_left, icon_top, icon_width, icon_height
+            )
+            icon_box.fill.solid()
+            icon_box.fill.fore_color.rgb = HEADER_TEXT_COLOR  # Red background
+            icon_box.line.fill.background()  # Remove border
+            
+            # Add icon text (centered inside red bg)
+            icon_text = slide9.shapes.add_textbox(
+                icon_left, icon_top, icon_width, icon_height
+            )
+            icon_frame = icon_text.text_frame
+            icon_frame.clear()
+            icon_frame.margin_top = Inches(0)
+            icon_frame.margin_bottom = Inches(0)
+            icon_frame.vertical_anchor = MSO_ANCHOR.MIDDLE  # Center vertically
+            
+            icon_p = icon_frame.paragraphs[0]
+            icon_p.text = network_metric_icons.get(metric, "📊")  # Use specific icon or default
+            icon_p.alignment = PP_ALIGN.CENTER
+            icon_p.font.size = Pt(22)  # Adjusted for icon box size
+            icon_p.font.color.rgb = RGBColor(255, 255, 255)
+            
+            # Combined value + metric label, vertically centered inside white bg
+            text_left = icon_left + icon_width + Inches(0.15)
+            text_width = metrics_width - icon_width - Inches(0.25)
+            
+            value_textbox = slide9.shapes.add_textbox(
+                text_left, box_top, text_width, metrics_height
+            )
+            tf = value_textbox.text_frame
+            tf.clear()
+            tf.margin_top = Inches(0)
+            tf.margin_bottom = Inches(0)
+            tf.vertical_anchor = MSO_ANCHOR.MIDDLE  # Center content vertically
+            
+            # Big number
+            value_p = tf.paragraphs[0]
+            value_p.text = f"{value:,}"
+            value_p.alignment = PP_ALIGN.LEFT
+            value_p.font.size = Pt(24)  # Adjusted for smaller cards
+            value_p.font.bold = True
+            value_p.font.color.rgb = RGBColor(51, 51, 51)  # Dark gray for better readability
+            
+            # Metric name
+            metric_p = tf.add_paragraph()
+            metric_p.text = metric
+            metric_p.alignment = PP_ALIGN.LEFT
+            metric_p.font.size = Pt(11)  # Adjusted for smaller cards
+            metric_p.font.color.rgb = RGBColor(102, 102, 102)  # Medium gray
+            
         # Right side - Sentiment analysis from combined_sources
         if 'combined_sources' in data_frames and 'Instagram' in data_frames['combined_sources']:
             insta_sentiment_data = data_frames['combined_sources']['Instagram']
@@ -1321,29 +1389,24 @@ def create_ppt(data_frames, output_path, start_date, end_date, company_name, com
             # Position smaller donut chart centered in its section
             donut_size = Inches(3.5)
             x = right_section_left
-            y = Inches(1)
-            
-            # Add title for donut chart
-            donut_title = slide9.shapes.add_textbox(
-                x, y, donut_size, Inches(0.3)
-            )
-            title_p = donut_title.text_frame.add_paragraph()
-            title_p.text = "📊 Ümumi sentiment bölgüsü"
-            title_p.font.size = Pt(14)
-            title_p.font.bold = True
-            title_p.font.color.rgb = HEADER_TEXT_COLOR
-            title_p.alignment = PP_ALIGN.CENTER
+            y = Inches(1.2)
             
             # Position donut chart below title
             donut = slide9.shapes.add_chart(
                 XL_CHART_TYPE.DOUGHNUT, 
-                x, y + Inches(0.4), 
+                x, y, 
                 donut_size, donut_size - Inches(0.4), 
                 donut_data
             ).chart
             donut.has_legend = True
             donut.legend.position = XL_LEGEND_POSITION.TOP
             donut.legend.font.size = Pt(8)  # Reduced legend size
+            
+            donut.has_title = True
+            donut.chart_title.text_frame.text = "📊 Ümumi sentiment bölgüsü"
+            donut.chart_title.text_frame.paragraphs[0].font.size = Pt(14)
+            donut.chart_title.text_frame.paragraphs[0].font.bold = True
+            donut.chart_title.text_frame.paragraphs[0].font.color.rgb = HEADER_TEXT_COLOR  # Red color for title
             
             # Set chart background
             donut.chart_style = 2  # White background
@@ -1449,17 +1512,6 @@ def create_ppt(data_frames, output_path, start_date, end_date, company_name, com
                 x_donut = Inches(0.5)
                 y_donut = Inches(1.2)  # Just below header
                 
-                # Add title for donut chart
-                donut_title = slide10.shapes.add_textbox(
-                    x_donut, y_donut, donut_size, Inches(0.3)
-                )
-                title_p = donut_title.text_frame.add_paragraph()
-                title_p.text = "📊 Postların sentiment bölgüsü"
-                title_p.font.size = Pt(14)
-                title_p.font.bold = True
-                title_p.font.color.rgb = HEADER_TEXT_COLOR
-                title_p.alignment = PP_ALIGN.CENTER
-                
                 # Add donut chart below its title
                 sentiment_counts = company_sentiment['Sentiment'].value_counts()
                 donut_data = ChartData()
@@ -1473,7 +1525,7 @@ def create_ppt(data_frames, output_path, start_date, end_date, company_name, com
                 donut = slide10.shapes.add_chart(
                     XL_CHART_TYPE.DOUGHNUT, 
                     x_donut, 
-                    y_donut + Inches(0.4),
+                    y_donut,
                     donut_size, 
                     donut_size - Inches(0.4),
                     donut_data
@@ -1482,7 +1534,13 @@ def create_ppt(data_frames, output_path, start_date, end_date, company_name, com
                 donut.has_legend = True
                 donut.legend.position = XL_LEGEND_POSITION.TOP
                 donut.legend.font.size = Pt(10)
-                donut.chart_style = 2  # White background
+                donut.chart_style = 2  # White background 
+                
+                donut.has_title = True
+                donut.chart_title.text_frame.text = "📊 Postların sentiment bölgüsü"
+                donut.chart_title.text_frame.paragraphs[0].font.size = Pt(14)
+                donut.chart_title.text_frame.paragraphs[0].font.bold = True
+                donut.chart_title.text_frame.paragraphs[0].font.color.rgb = HEADER_TEXT_COLOR  # Red color for title
                 
                 # Apply colors and data labels to donut chart
                 for i, point in enumerate(donut.series[0].points):
@@ -1507,7 +1565,7 @@ def create_ppt(data_frames, output_path, start_date, end_date, company_name, com
                 x_line = Inches(4.5)  # Start after donut chart
                 y_line = Inches(1.2)  # Same vertical alignment as donut
                 cx_line = Inches(8.33)  # Remaining width
-                cy_line = donut_size  # Same height as donut
+                cy_line = Inches(3)
                 
                 chart = slide10.shapes.add_chart(
                     XL_CHART_TYPE.LINE,
@@ -1581,17 +1639,114 @@ def create_ppt(data_frames, output_path, start_date, end_date, company_name, com
                 sp.getparent().remove(sp)
         add_slide_header(slide11, company_logo_path, start_date, end_date, "Sosial media postlarının analizi")
 
-        image_width = Inches(2)
-        vertical_spacing = Inches(0.05)
-        caption_height = Inches(0.35)
-        group_top = Inches(1)
-        max_group_height = Inches(5.5)
+        # Layout constants
+        header_height = Inches(0.8)
+        slide_width = Inches(13.33)
+        slide_height = Inches(7.5)
+        available_height = slide_height - header_height - Inches(0.4)  # Bottom margin
+        content_top = header_height + Inches(0.2)
+
+        # Post layout settings - Increased image size
+        image_width = Inches(2.2)  # Increased from 1.8
+        vertical_spacing = Inches(0.15)  # Increased spacing
+        horizontal_spacing = Inches(0.3)  # Space between images in same row
+        caption_height = Inches(0.3)
+        group_top = content_top + Inches(0.8)  # Space for section titles
+        max_group_height = available_height - Inches(1.2)  # Space for titles and clue card
+
+        # Section titles
+        title_height = Inches(0.4)
+        title_top = content_top + Inches(0.2)
+
+        # Negative posts title (left side) - Updated styling with background
+        negative_title_left = Inches(0.5)
+        negative_title_width = Inches(6)
+
+        # Add white background shape for negative title
+        negative_bg = slide11.shapes.add_shape(
+            MSO_SHAPE.ROUNDED_RECTANGLE,
+            negative_title_left, title_top, negative_title_width, title_height
+        )
+        negative_bg.fill.solid()
+        negative_bg.fill.fore_color.rgb = RGBColor(255, 255, 255)
+        negative_bg.line.fill.background()
+        negative_bg.line.width = Inches(0.01)
+
+        # Add shadow to negative title background
+        negative_bg.shadow.inherit = True
+        negative_bg.shadow.blur_radius = 3000
+        negative_bg.shadow.distance = 2000
+        negative_bg.shadow.angle = 45
+
+        negative_title_box = slide11.shapes.add_textbox(
+            negative_title_left, title_top, negative_title_width, title_height
+        )
+        negative_tf = negative_title_box.text_frame
+        negative_tf.clear()
+        negative_tf.vertical_anchor = MSO_ANCHOR.MIDDLE
+        negative_p = negative_tf.paragraphs[0]
+
+        # Create runs for different styling
+        negative_run1 = negative_p.runs[0] if negative_p.runs else negative_p.add_run()
+        negative_run1.text = "Neqativ "
+        negative_run1.font.size = Pt(18)
+        negative_run1.font.bold = True
+        negative_run1.font.color.rgb = RGBColor(220, 53, 69)  # Red color
+
+        negative_run2 = negative_p.add_run()
+        negative_run2.text = "post nümunələri"
+        negative_run2.font.size = Pt(18)
+        negative_run2.font.bold = False
+        negative_run2.font.color.rgb = RGBColor(0, 0, 0)  # Black color
+
+        negative_p.alignment = PP_ALIGN.CENTER
+
+        # Positive posts title (right side) - Updated styling with background
+        positive_title_left = Inches(6.83)  # Right half starts here
+        positive_title_width = Inches(6)
+
+        # Add white background shape for positive title
+        positive_bg = slide11.shapes.add_shape(
+            MSO_SHAPE.ROUNDED_RECTANGLE,
+            positive_title_left, title_top, positive_title_width, title_height
+        )
+        positive_bg.fill.solid()
+        positive_bg.fill.fore_color.rgb = RGBColor(255, 255, 255)
+        positive_bg.line.fill.background()
+        positive_bg.line.width = Inches(0.01)
+
+        # Add shadow to positive title background
+        positive_bg.shadow.inherit = True
+        positive_bg.shadow.blur_radius = 3000
+        positive_bg.shadow.distance = 2000
+        positive_bg.shadow.angle = 45
+
+        positive_title_box = slide11.shapes.add_textbox(
+            positive_title_left, title_top, positive_title_width, title_height
+        )
+        positive_tf = positive_title_box.text_frame
+        positive_tf.clear()
+        positive_tf.vertical_anchor = MSO_ANCHOR.MIDDLE
+        positive_p = positive_tf.paragraphs[0]
+
+        # Create runs for different styling
+        positive_run1 = positive_p.runs[0] if positive_p.runs else positive_p.add_run()
+        positive_run1.text = "Pozitiv "
+        positive_run1.font.size = Pt(18)
+        positive_run1.font.bold = True
+        positive_run1.font.color.rgb = RGBColor(40, 167, 69)  # Green color
+
+        positive_run2 = positive_p.add_run()
+        positive_run2.text = "post nümunələri"
+        positive_run2.font.size = Pt(18)
+        positive_run2.font.bold = False
+        positive_run2.font.color.rgb = RGBColor(0, 0, 0)  # Black color
+
+        positive_p.alignment = PP_ALIGN.CENTER
 
         def add_post(slide, post, left, top):
             if not os.path.exists(post["image_path"]):
                 return 0
-
-           
 
             # Add image and get actual height
             img = slide.shapes.add_picture(post["image_path"], left, top, width=image_width)
@@ -1602,52 +1757,121 @@ def create_ppt(data_frames, output_path, start_date, end_date, company_name, com
 
             # Styling
             img.line.color.rgb = RGBColor(200, 200, 200)
+            img.line.width = Inches(0.02)
             img.shadow.inherit = False
             img.shadow.blur_radius = 5000
-
-            # Caption
-            caption_top = top + Inches(img_height)  + Inches(0.05)
-            caption_box = slide.shapes.add_textbox(left, caption_top, image_width, caption_height)
-            tf = caption_box.text_frame
-            p = tf.paragraphs[0]
-            p.text = post.get("caption", "🔗 Click to view post")
-            p.font.size = Pt(10)
-            p.alignment = PP_ALIGN.CENTER
-            p.font.color.rgb = RGBColor(80, 80, 80)
 
             return Inches(img_height) + caption_height + vertical_spacing
 
         def layout_posts(slide, posts, group_center_x):
             count = len(posts)
             positions = []
+            
+            if count == 0:
+                return
 
             if count == 1:
-                positions.append((group_center_x - image_width / 2, group_top + Inches(2.5)))
+                positions.append((group_center_x - image_width / 2, group_top + Inches(1.2)))
             elif count == 2:
-                positions.append((group_center_x - image_width / 2, group_top + Inches(0.5)))  # top
-                positions.append((group_center_x - image_width / 2, group_top + Inches(3)))  # bottom
-            elif count == 3:
-                # Top row (two side by side)
-                spacing_x = Inches(0.3)
-                left1 = group_center_x - image_width - spacing_x / 2
-                left2 = group_center_x + spacing_x / 2
-                top1 = group_top + Inches(0.5)
+                positions.append((group_center_x - image_width / 2, group_top + Inches(0.2)))  # top
+                positions.append((group_center_x - image_width / 2, group_top + Inches(2.2)))  # bottom with more space
+            elif count >= 3:
+                # Top row (two side by side) - Adjusted spacing for bigger images
+                left1 = group_center_x - image_width - horizontal_spacing / 2
+                left2 = group_center_x + horizontal_spacing / 2
+                top1 = group_top + Inches(0.1)
                 positions.append((left1, top1))
                 positions.append((left2, top1))
-                # Centered below
+                # Centered below with more space
                 center_x = group_center_x - image_width / 2
-                positions.append((center_x, group_top + Inches(3)))
+                positions.append((center_x, group_top + Inches(2.1)))
 
-            # Add posts
-            for post, (left, top) in zip(posts, positions):
+            # Add posts (limit to 3)
+            for post, (left, top) in zip(posts[:3], positions):
                 add_post(slide, post, left, top)
 
         # Apply layout for each group
         if negative_posts:
-            layout_posts(slide11, negative_posts[:3], group_center_x=Inches(2.25))  # left half
+            layout_posts(slide11, negative_posts, group_center_x=Inches(3.25))  # Left half center
 
         if positive_posts:
-            layout_posts(slide11, positive_posts[:3], group_center_x=Inches(7))  # right half
+            layout_posts(slide11, positive_posts, group_center_x=Inches(9.75))  # Right half center
+
+        # Add clue card at bottom center with stick icon - Red background, narrower and taller
+        clue_card_width = Inches(2)  # Reduced width
+        clue_card_height = Inches(1.5)  # Increased height
+        clue_card_left = (slide_width - clue_card_width) / 2  # Center horizontally
+        clue_card_top = slide_height - clue_card_height - Inches(0.2)  # Bottom with margin
+
+        # Red background card with shadow
+        clue_bg = slide11.shapes.add_shape(
+            MSO_SHAPE.ROUNDED_RECTANGLE,
+            clue_card_left, clue_card_top, clue_card_width, clue_card_height
+        )
+        clue_bg.fill.solid()
+        clue_bg.fill.fore_color.rgb = RGBColor(255, 255, 255)
+        clue_bg.line.color.rgb = RGBColor(180, 40, 55)  # Darker red border
+        clue_bg.line.width = Inches(0.01)
+
+        # Add shadow to clue card
+        clue_bg.shadow.inherit = False
+        clue_bg.shadow.blur_radius = 4000
+        clue_bg.shadow.distance = 2500
+        clue_bg.shadow.angle = 45
+
+        # Add stick icon (positioned at top-right corner, half outside)
+        stick_size = Inches(0.4)
+        stick_left = clue_card_left + clue_card_width - stick_size / 2  # Half outside right edge
+        stick_top = clue_card_top - stick_size / 2  # Half outside top edge
+
+        # Create stick icon using a rounded rectangle
+        stick_icon = slide11.shapes.add_shape(
+            MSO_SHAPE.ROUNDED_RECTANGLE,
+            stick_left, stick_top, stick_size, stick_size
+        )
+        stick_icon.fill.solid()
+        stick_icon.fill.fore_color.rgb = HEADER_TEXT_COLOR
+        stick_icon.line.color.rgb = RGBColor(220, 165, 0)
+        stick_icon.line.width = Inches(0.008)
+
+        # Add shadow to stick
+        stick_icon.shadow.inherit = False
+        stick_icon.shadow.blur_radius = 2000
+        stick_icon.shadow.distance = 1500
+        stick_icon.shadow.angle = 45
+
+        # Add stick icon text (using a pin/stick emoji or symbol)
+        stick_text = slide11.shapes.add_textbox(
+            stick_left, stick_top, stick_size, stick_size
+        )
+        stick_tf = stick_text.text_frame
+        stick_tf.clear()
+        stick_tf.margin_top = Inches(0)
+        stick_tf.margin_bottom = Inches(0)
+        stick_tf.vertical_anchor = MSO_ANCHOR.MIDDLE
+
+        stick_p = stick_tf.paragraphs[0]
+        stick_p.text = "📌"  # Pin/stick emoji
+        stick_p.font.size = Pt(16)
+        stick_p.alignment = PP_ALIGN.CENTER
+
+        # Clue text (adjusted for better positioning)
+        clue_text = slide11.shapes.add_textbox(
+            clue_card_left + Inches(0.1), clue_card_top, clue_card_width - Inches(0.2), clue_card_height
+        )
+        clue_tf = clue_text.text_frame
+        clue_tf.clear()
+        clue_tf.margin_top = Inches(0)
+        clue_tf.margin_bottom = Inches(0)
+        clue_tf.vertical_anchor = MSO_ANCHOR.MIDDLE
+        clue_tf.word_wrap = True
+        clue_tf.auto_size = MSO_AUTO_SIZE.TEXT_TO_FIT_SHAPE
+
+        clue_p = clue_tf.paragraphs[0]
+        clue_p.text = "Şəkillərə klikləyərək orijinal postları görə bilərsiniz"
+        clue_p.font.size = Pt(16)
+        clue_p.font.color.rgb = HEADER_TEXT_COLOR
+        clue_p.alignment = PP_ALIGN.CENTER
 
         # endregion
 
