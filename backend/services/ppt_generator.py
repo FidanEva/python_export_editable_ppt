@@ -14,7 +14,7 @@ from PIL import Image
 logger = logging.getLogger(__name__)
 
 # Define colors
-SLIDE_BG_COLOR = RGBColor(250, 250, 250)  # Light gray
+SLIDE_BG_COLOR = RGBColor(245, 245, 245)  # Light gray
 CHART_BG_COLOR = RGBColor(255, 255, 255)  # White
 HEADER_TEXT_COLOR = RGBColor(214, 55, 64)    # Red
 HEADER_HEIGHT = 0.8
@@ -201,6 +201,19 @@ def apply_sentiment_colors(chart):
         sentiment_value = [1, 0, -1][i]
         # series.format.fill.fore_color.rgb = SENTIMENT_COLORS[sentiment_value]
         series.format.fill.fore_color.rgb = SENTIMENT_COLORS[list(SENTIMENT_COLORS.keys())[i]]
+
+def add_bg_box(slide, left, top, width, height, color=RGBColor(255, 255, 255)):
+    """Helper function to add a background box with rounded corners"""
+    bg_box = slide.shapes.add_shape(
+        MSO_SHAPE.ROUNDED_RECTANGLE,
+        left, top, width, height
+    )
+    bg_box.fill.solid()
+    bg_box.fill.fore_color.rgb = color
+    bg_box.line.fill.background()  # Remove border
+    bg_box.shadow.inherit = False
+    bg_box.adjustments[0] = 0.01  # Adjust roundness if needed
+    return bg_box
 
 def create_ppt(data_frames, output_path, start_date, end_date, company_name, company_logo_path, mediaeye_logo_path, neurotime_logo_path, competitor_logo_paths=None, positive_links=None, negative_links=None, positive_posts=None, negative_posts=None):
     try:
@@ -565,6 +578,10 @@ def create_ppt(data_frames, output_path, start_date, end_date, company_name, com
         
         left, top = left_col_x, bottom_row_y
         x, y, cx, cy = left, top, section_width, bottom_section_height
+
+        # White background card
+        bg_box = add_bg_box(slide3, x, y, cx, cy, color=CHART_BG_COLOR)
+
         chart = slide3.shapes.add_chart(XL_CHART_TYPE.LINE, x, y, cx, cy, chart_data).chart
         chart.has_legend = True
         chart.legend.position = XL_LEGEND_POSITION.TOP
@@ -588,6 +605,8 @@ def create_ppt(data_frames, output_path, start_date, end_date, company_name, com
         
         left, top = right_col_x, bottom_row_y
         x, y, cx, cy = left, top, section_width, bottom_section_height
+        bg_box = add_bg_box(slide3, x, y, cx, cy, color=CHART_BG_COLOR)
+
         donut = slide3.shapes.add_chart(XL_CHART_TYPE.DOUGHNUT, x, y, cx, cy, donut_data).chart
         donut.has_legend = True
         donut.legend.position = XL_LEGEND_POSITION.TOP
@@ -655,7 +674,8 @@ def create_ppt(data_frames, output_path, start_date, end_date, company_name, com
         y = Inches(1.65)
         cx = Inches(11)  # Chart width
         cy = Inches(5)   # Chart height
-        
+
+        bg_box = add_bg_box(slide4, x, y, cx, cy, color=CHART_BG_COLOR)
         chart = slide4.shapes.add_chart(XL_CHART_TYPE.COLUMN_CLUSTERED, x, y, cx, cy, chart_data).chart
         
         # Configure legend
@@ -764,6 +784,7 @@ def create_ppt(data_frames, output_path, start_date, end_date, company_name, com
             x = Inches(0.9)
             y = Inches(1.15)
             
+            bg_box = add_bg_box(slide5, x, y, chart_width, chart_height, color=CHART_BG_COLOR)
             chart = slide5.shapes.add_chart(XL_CHART_TYPE.BAR_CLUSTERED, x, y, chart_width, chart_height, chart_data).chart
             
             # Remove legend
@@ -933,14 +954,8 @@ def create_ppt(data_frames, output_path, start_date, end_date, company_name, com
             box_top = top + top_margin + (metrics_height * i) + (card_spacing * i)
             
             # White background card
-            bg_box = slide6.shapes.add_shape(
-                MSO_SHAPE.ROUNDED_RECTANGLE,
-                left, box_top, metrics_width, metrics_height
-            )
-            bg_box.fill.solid()
-            bg_box.fill.fore_color.rgb = RGBColor(255, 255, 255)
-            bg_box.line.fill.background()  # Remove border
-            
+            bg_box = add_bg_box(slide6, left, box_top, metrics_width, metrics_height, color=CHART_BG_COLOR)
+
             # Red icon background (adjusted for new card height)
             icon_width = Inches(0.5)  # Slightly reduced to fit new card height
             icon_height = Inches(0.5)  # Slightly reduced to fit new card height
@@ -1023,6 +1038,8 @@ def create_ppt(data_frames, output_path, start_date, end_date, company_name, com
             x = right_section_left
             y = Inches(1.2)
             
+            bg_box = add_bg_box(slide6, x, y, donut_size, donut_size - Inches(0.4), color=CHART_BG_COLOR)
+
             # Position donut chart below title
             donut = slide6.shapes.add_chart(
                 XL_CHART_TYPE.DOUGHNUT, 
@@ -1069,6 +1086,7 @@ def create_ppt(data_frames, output_path, start_date, end_date, company_name, com
             y = Inches(1.25)
             cx = right_width - donut_size - Inches(0.3)  # Remaining width
             cy = donut_size - Inches(0.25)  # Same height as donut
+            bg_box = add_bg_box(slide6, x, y, cx, cy, color=CHART_BG_COLOR)
             chart = slide6.shapes.add_chart(XL_CHART_TYPE.LINE, x, y, cx, cy, chart_data).chart
             chart.has_legend = True
             chart.legend.position = XL_LEGEND_POSITION.TOP
@@ -1104,6 +1122,7 @@ def create_ppt(data_frames, output_path, start_date, end_date, company_name, com
             y = Inches(4.5)  # Below upper charts
             cx = right_width  # Full width of right section
             cy = Inches(3)  # Remaining height
+            bg_box = add_bg_box(slide6, x, y, cx, cy, color=CHART_BG_COLOR)
             chart = slide6.shapes.add_chart(XL_CHART_TYPE.COLUMN_CLUSTERED, x, y, cx, cy, chart_data).chart
             chart.has_legend = True
             chart.legend.position = XL_LEGEND_POSITION.TOP
@@ -1321,7 +1340,9 @@ def create_ppt(data_frames, output_path, start_date, end_date, company_name, com
         background = slide9.background
         fill = background.fill
         fill.solid()
-        fill.fore_color.rgb = SLIDE_BG_COLOR            # Left side - Instagram metrics from official_instagram
+        fill.fore_color.rgb = SLIDE_BG_COLOR
+        
+        # Left side - Instagram metrics from official_instagram
         if 'official_instagram' in data_frames and len(data_frames['official_instagram']) > 0:
             insta_data = list(data_frames['official_instagram'].values())[0]
             company_metrics = insta_data[insta_data['Company'] == company_name]
@@ -1358,14 +1379,8 @@ def create_ppt(data_frames, output_path, start_date, end_date, company_name, com
             box_top = top + top_margin + (metrics_height * i) + (card_spacing * i)
             
             # Add white background box for the whole metric
-            bg_box = slide9.shapes.add_shape(
-                MSO_SHAPE.ROUNDED_RECTANGLE,
-                left, box_top, metrics_width, metrics_height
-            )
-            bg_box.fill.solid()
-            bg_box.fill.fore_color.rgb = RGBColor(255, 255, 255)  # White background
-            bg_box.line.fill.background()  # Remove border
-            
+            bg_box = add_bg_box(slide9, left, box_top, metrics_width, metrics_height, color=CHART_BG_COLOR)
+
             # Add red background for icon (square, centered vertically)
             icon_width = Inches(0.5)
             icon_height = Inches(0.5)
@@ -1447,7 +1462,8 @@ def create_ppt(data_frames, output_path, start_date, end_date, company_name, com
             donut_size = Inches(3.5)
             x = right_section_left
             y = Inches(1.2)
-            
+
+            bg_box = add_bg_box(slide9, x, y, donut_size, donut_size - Inches(0.4), color=CHART_BG_COLOR)
             # Position donut chart below title
             donut = slide9.shapes.add_chart(
                 XL_CHART_TYPE.DOUGHNUT, 
@@ -1491,6 +1507,7 @@ def create_ppt(data_frames, output_path, start_date, end_date, company_name, com
             y = Inches(1.25)
             cx = right_width - donut_size - Inches(0.5)  # Remaining width
             cy = donut_size - Inches(0.25)  # Same height as donut
+            bg_box = add_bg_box(slide9, x, y, cx, cy, color=CHART_BG_COLOR)
             chart = slide9.shapes.add_chart(XL_CHART_TYPE.LINE, x, y, cx, cy, chart_data).chart
             chart.has_legend = True
             chart.legend.position = XL_LEGEND_POSITION.TOP
@@ -1527,6 +1544,7 @@ def create_ppt(data_frames, output_path, start_date, end_date, company_name, com
             y = Inches(4.5)  # Position below the top charts
             cx = right_width  # Full width of right section
             cy = Inches(3)  # Height
+            bg_box = add_bg_box(slide9, x, y, cx, cy, color=CHART_BG_COLOR)
             chart = slide9.shapes.add_chart(XL_CHART_TYPE.COLUMN_CLUSTERED, x, y, cx, cy, chart_data).chart
             chart.has_legend = True
             chart.legend.position = XL_LEGEND_POSITION.TOP
@@ -1579,7 +1597,7 @@ def create_ppt(data_frames, output_path, start_date, end_date, company_name, com
                     sentiment_counts.get(0, 0),
                     sentiment_counts.get(-1, 0)
                 ])
-                
+                bg_box = add_bg_box(slide10, x_donut, y_donut, donut_size, donut_size - Inches(0.4), color=CHART_BG_COLOR)
                 donut = slide10.shapes.add_chart(
                     XL_CHART_TYPE.DOUGHNUT, 
                     x_donut, 
@@ -1624,7 +1642,8 @@ def create_ppt(data_frames, output_path, start_date, end_date, company_name, com
                 y_line = Inches(1.2)  # Same vertical alignment as donut
                 cx_line = Inches(8.33)  # Remaining width
                 cy_line = Inches(3)
-                
+
+                bg_box = add_bg_box(slide10, x_line, y_line, cx_line, cy_line, color=CHART_BG_COLOR)
                 chart = slide10.shapes.add_chart(
                     XL_CHART_TYPE.LINE,
                     x_line, y_line,
@@ -1667,7 +1686,8 @@ def create_ppt(data_frames, output_path, start_date, end_date, company_name, com
                 y_bar = Inches(4.5)  # Start below top section
                 cx_bar = Inches(12.33)  # Full width
                 cy_bar = Inches(2.5)  # Remaining height
-                
+
+                bg_box = add_bg_box(slide10, x_bar, y_bar, cx_bar, cy_bar, color=CHART_BG_COLOR)
                 chart = slide10.shapes.add_chart(
                     XL_CHART_TYPE.COLUMN_CLUSTERED,
                     x_bar, y_bar,
@@ -1704,6 +1724,12 @@ def create_ppt(data_frames, output_path, start_date, end_date, company_name, com
         slide_height = Inches(7.5)
         available_height = slide_height - header_height - Inches(0.4)  # Bottom margin
         content_top = header_height + Inches(0.2)
+
+        # Set slide background
+        background = slide11.background
+        fill = background.fill
+        fill.solid()
+        fill.fore_color.rgb = SLIDE_BG_COLOR
 
         # Post layout settings - Increased image size
         image_width = Inches(2.2)  # Increased from 1.8
@@ -1869,7 +1895,7 @@ def create_ppt(data_frames, output_path, start_date, end_date, company_name, com
         )
         clue_bg.fill.solid()
         clue_bg.fill.fore_color.rgb = RGBColor(255, 255, 255)
-        clue_bg.line.color.rgb = RGBColor(180, 40, 55)  # Darker red border
+        clue_bg.line.color.rgb = RGBColor(255, 255, 255)
         clue_bg.line.width = Inches(0.01)
 
         # Add shadow to clue card
