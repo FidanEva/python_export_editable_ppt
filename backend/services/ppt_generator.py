@@ -55,34 +55,36 @@ def format_chart_axes(chart, category_font_size=6, value_font_size=6, rotation_a
             chart.value_axis.axis_title.text_frame.paragraphs[0].font.size = Pt(value_font_size)
         chart.value_axis.tick_labels.font.color.rgb = RGBColor(89, 89, 89)
         chart.value_axis.has_major_gridlines = False
-
 def add_slide_header(slide, company_logo_path, start_date, end_date, title):
     """Helper function to add a consistent header to slides"""
 
     # Set constants
-    SLIDE_WIDTH_INCHES = 13.33
+    FULL_SLIDE_WIDTH_INCHES = 13.33
+    HEADER_WIDTH_RATIO = 0.95
+    HEADER_WIDTH = FULL_SLIDE_WIDTH_INCHES * HEADER_WIDTH_RATIO
+    HEADER_LEFT_MARGIN = (FULL_SLIDE_WIDTH_INCHES - HEADER_WIDTH) / 2
 
     # Add header background with SLIDE_BG_COLOR
     header = slide.shapes.add_shape(
         MSO_SHAPE.RECTANGLE,
-        Inches(0), Inches(0),
-        Inches(SLIDE_WIDTH_INCHES), Inches(HEADER_HEIGHT)
+        Inches(HEADER_LEFT_MARGIN), Inches(0),
+        Inches(HEADER_WIDTH), Inches(HEADER_HEIGHT)
     )
     header.fill.solid()
     header.fill.fore_color.rgb = SLIDE_BG_COLOR
     header.line.fill.background()  # Remove border
 
-    # Add company logo (a bit lower)
+    # Add company logo (left-aligned within the header)
     if os.path.exists(company_logo_path):
         slide.shapes.add_picture(
             company_logo_path,
-            Inches(0.2), Inches(0.2),  # moved slightly lower
+            Inches(HEADER_LEFT_MARGIN + 0.2), Inches(0.2),
             height=Inches(0.4)
         )
 
-    # Add title in the center
+    # Add title in the center of the header
     title_box = slide.shapes.add_textbox(
-        Inches((SLIDE_WIDTH_INCHES - 6) / 2), Inches(0.2),
+        Inches(HEADER_LEFT_MARGIN + (HEADER_WIDTH - 6) / 2), Inches(0.2),
         Inches(6), Inches(0.6)
     )
     tf = title_box.text_frame
@@ -94,9 +96,9 @@ def add_slide_header(slide, company_logo_path, start_date, end_date, title):
     p.alignment = PP_ALIGN.CENTER
     p.font.color.rgb = HEADER_TEXT_COLOR
 
-    # Add date on the far right
+    # Add date on the far right, a bit lower
     date_box = slide.shapes.add_textbox(
-        Inches(SLIDE_WIDTH_INCHES - 3), Inches(0.2),
+        Inches(HEADER_LEFT_MARGIN + HEADER_WIDTH - 3), Inches(0.35),
         Inches(2.8), Inches(0.6)
     )
     tf = date_box.text_frame
@@ -107,17 +109,50 @@ def add_slide_header(slide, company_logo_path, start_date, end_date, title):
     p.alignment = PP_ALIGN.RIGHT
     p.font.color.rgb = HEADER_TEXT_COLOR
 
-    # Add divider line
+    # Add divider line under the header, same width
     line = slide.shapes.add_shape(
         MSO_SHAPE.RECTANGLE,
-        Inches(0), Inches(HEADER_HEIGHT),
-        Inches(SLIDE_WIDTH_INCHES), Inches(0.02)
+        Inches(HEADER_LEFT_MARGIN), Inches(HEADER_HEIGHT),
+        Inches(HEADER_WIDTH), Inches(0.02)
     )
     line.fill.solid()
     line.fill.fore_color.rgb = HEADER_TEXT_COLOR
     line.line.fill.background()  # Remove border
 
+def add_side_line(slide):
+    """Helper function to add side line with only right corners rounded"""
+    # Add side line (70% of slide height, centered vertically)
+    slide_height = Inches(7.5)
+    line_height = slide_height * 0.6
+    start_y = (slide_height - line_height) / 2
 
+    # Create a rounded rectangle for the side line
+    side_line = slide.shapes.add_shape(
+        MSO_SHAPE.ROUNDED_RECTANGLE,
+        Inches(0),
+        start_y,
+        Inches(0.2),
+        line_height
+    )
+    
+    # Adjust roundness - number of adjustment points varies by shape
+    # [0]: overall roundness (0-1)
+    # [1]: top-left corner roundness (0=square, 1=round)
+    # [2]: top-right corner roundness
+    # [3]: bottom-right corner roundness
+    # [4]: bottom-left corner roundness
+    if len(side_line.adjustments) >= 5:
+        side_line.adjustments[0] = 1      # Set maximum roundness
+        side_line.adjustments[1] = 0      # Square top-left
+        side_line.adjustments[2] = 1      # Round top-right
+        side_line.adjustments[3] = 1      # Round bottom-right
+        side_line.adjustments[4] = 0      # Square bottom-left
+    
+    # Apply fill and remove border
+    side_line.fill.solid()
+    side_line.fill.fore_color.rgb = HEADER_TEXT_COLOR
+    side_line.line.fill.background()
+    
 # Function to apply consistent chart formatting
 def apply_chart_formatting(chart, use_legend=True, legend_position=XL_LEGEND_POSITION.TOP, 
                          category_font_size=6, value_font_size=6, 
@@ -400,7 +435,8 @@ def create_ppt(data_frames, output_path, start_date, end_date, company_name, com
                 sp.getparent().remove(sp)
         
         add_slide_header(slide3, company_logo_path, start_date, end_date, "Sentiment Analysis")
-        
+        add_side_line(slide3)
+
         # Set slide background
         background = slide3.background
         fill = background.fill
@@ -587,6 +623,7 @@ def create_ppt(data_frames, output_path, start_date, end_date, company_name, com
                 sp.getparent().remove(sp)
 
         add_slide_header(slide4, company_logo_path, start_date, end_date, "Xəbərlərin analizi")
+        add_side_line(slide4)
 
         # Set slide background
         background = slide4.background
@@ -695,6 +732,8 @@ def create_ppt(data_frames, output_path, start_date, end_date, company_name, com
                 sp.getparent().remove(sp)
 
         add_slide_header(slide5, company_logo_path, start_date, end_date, "Xəbər saylarının saytlar üzərindən bölgüsü")
+        add_side_line(slide5)
+
         # Set slide background
         background = slide5.background
         fill = background.fill
@@ -844,6 +883,7 @@ def create_ppt(data_frames, output_path, start_date, end_date, company_name, com
                 sp = shape._element
                 sp.getparent().remove(sp)
         add_slide_header(slide6, company_logo_path, start_date, end_date, "Facebook postlarının analizi")
+        add_side_line(slide6)
 
         # Set slide background
         background = slide6.background
@@ -1083,6 +1123,7 @@ def create_ppt(data_frames, output_path, start_date, end_date, company_name, com
                 sp = shape._element
                 sp.getparent().remove(sp)
         add_slide_header(slide7, company_logo_path, start_date, end_date, "Banklar haqqında paylaşılan postların analizi")
+        add_side_line(slide7)
 
         # Set slide background
         background = slide7.background
@@ -1175,6 +1216,7 @@ def create_ppt(data_frames, output_path, start_date, end_date, company_name, com
                 sp = shape._element
                 sp.getparent().remove(sp)
         add_slide_header(slide8, company_logo_path, start_date, end_date, "Bankların rəsmi Facebook səhifələrinin analizi")
+        add_side_line(slide8)
 
         # Set slide background
         background = slide8.background
@@ -1273,6 +1315,7 @@ def create_ppt(data_frames, output_path, start_date, end_date, company_name, com
                 sp = shape._element
                 sp.getparent().remove(sp)
         add_slide_header(slide9, company_logo_path, start_date, end_date, "Instagram postlarının analizi")
+        add_side_line(slide9)
 
         # Set slide background
         background = slide9.background
@@ -1503,6 +1546,7 @@ def create_ppt(data_frames, output_path, start_date, end_date, company_name, com
                 sp = shape._element
                 sp.getparent().remove(sp)
         add_slide_header(slide10, company_logo_path, start_date, end_date, "Linkedln postlarının analizi")
+        add_side_line(slide10)
 
         # Set slide background
         background = slide10.background
@@ -1652,6 +1696,7 @@ def create_ppt(data_frames, output_path, start_date, end_date, company_name, com
                 sp = shape._element
                 sp.getparent().remove(sp)
         add_slide_header(slide11, company_logo_path, start_date, end_date, "Sosial media postlarının analizi")
+        add_side_line(slide11)
 
         # Layout constants
         header_height = Inches(0.8)
