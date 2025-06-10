@@ -408,64 +408,99 @@ def create_ppt(data_frames, output_path, start_date, end_date, company_name, com
         fill.fore_color.rgb = SLIDE_BG_COLOR
 
         # Grid layout positions
-        top_left = (Inches(0.5), Inches(1.2))
-        top_right = (Inches(5.5), Inches(1.2))
-        bottom_left = (Inches(0.5), Inches(3.5))
-        bottom_right = (Inches(5.5), Inches(3.5))
+        # Top row starts below header
+        top_row_y = Inches(1)
+        # Bottom row starts at middle of slide
+        bottom_row_y = Inches(3.5)
+        # Left column starts at left margin
+        left_col_x = Inches(0.5)
+        # Right column starts at middle of slide
+        right_col_x = Inches(6.5)
+        # Width for each section
+        section_width = Inches(5.5)
+        # Height for top sections (links)
+        top_section_height = Inches(2)
+        # Height for bottom sections (charts)
+        bottom_section_height = Inches(3.5)
         
         # Add positive links section (top left)
         if positive_links:
-            left, top = top_left
-            width = Inches(4.5)
-            height = Inches(0.4)
+            left, top = left_col_x, top_row_y
+            width = section_width
+            height = Inches(0.5)  # Reduced height for links
             
-            # Add title
+            # Add title with split colors
             title_box = slide3.shapes.add_textbox(left, top, width, Inches(0.3))
             tf = title_box.text_frame
+
             p = tf.add_paragraph()
-            p.text = "Positive Links"
-            p.font.size = Pt(12)
-            p.font.bold = True
+            # Add "Positiv" in green
+            run1 = p.add_run()
+            run1.text = "Positiv "
+            run1.font.color.rgb = RGBColor(40, 167, 69)  # Green color
+            run1.font.size = Pt(16)
+            run1.font.bold = True
+            # Add "xeberler" in black
+            run2 = p.add_run()
+            run2.text = "xəbərlərə və saylar aşağıda qeyd olunmuşdur. Xəbərlərə aid nümunələrə başlıqlardan keçid edə bilərsiniz."
+            run2.font.color.rgb = RGBColor(0, 0, 0)  # Black color
+            run2.font.size = Pt(16)
+            run2.font.bold = True
             p.alignment = PP_ALIGN.LEFT
-            top += Inches(0.4)
+            top += Inches(0.3)  # Reduced spacing after title
+            tf.word_wrap = True
             
             for i, link in enumerate(positive_links):
-                link_box = slide3.shapes.add_textbox(left, top + (height * i), width, height)
+                link_box = slide3.shapes.add_textbox(left, top + height + (height * i), width, height)
                 tf = link_box.text_frame
+                tf.word_wrap = True
                 p = tf.add_paragraph()
                 p.text = f"🔗 {link}"
-                p.font.size = Pt(8)
+                p.font.size = Pt(12)
                 p.font.color.rgb = RGBColor(0, 112, 192)  # Blue color
-                p.alignment = PP_ALIGN.LEFT
+                p.alignment = PP_ALIGN.LEFT  # Center the link text
                 r = p.runs[0]
                 r.hyperlink.address = link
 
+
         # Add negative links section (top right)
         if negative_links:
-            left, top = top_right
-            width = Inches(4.5)
-            height = Inches(0.4)
+            left, top = right_col_x, top_row_y
+            width = section_width
+            height = Inches(0.5)  # Reduced height for links
             
-            # Add title
+            # Add title with split colors
             title_box = slide3.shapes.add_textbox(left, top, width, Inches(0.3))
             tf = title_box.text_frame
             p = tf.add_paragraph()
-            p.text = "Negative Links"
-            p.font.size = Pt(12)
-            p.font.bold = True
+            # Add "Negativ" in red
+            run1 = p.add_run()
+            run1.text = "Negativ "
+            run1.font.color.rgb = RGBColor(220, 53, 69)  # Red color
+            run1.font.size = Pt(16)
+            run1.font.bold = True
+            # Add "xeberler" in black
+            run2 = p.add_run()
+            run2.text = "xəbərlər və saylar aşağıda qeyd olunmuşdur. Xəbərlərə aid nümunələrə başlıqlardan keçid edə bilərsiniz."
+            run2.font.color.rgb = RGBColor(0, 0, 0)  # Black color
+            run2.font.size = Pt(16)
+            run2.font.bold = True
             p.alignment = PP_ALIGN.LEFT
-            top += Inches(0.4)
+            top += Inches(0.3)  # Reduced spacing after title
+            tf.word_wrap = True
             
             for i, link in enumerate(negative_links):
-                link_box = slide3.shapes.add_textbox(left, top + (height * i), width, height)
+                link_box = slide3.shapes.add_textbox(left, top + height + (height * i), width, height)
                 tf = link_box.text_frame
+                tf.word_wrap = True
                 p = tf.add_paragraph()
                 p.text = f"🔗 {link}"
-                p.font.size = Pt(8)
+                p.font.size = Pt(12)
                 p.font.color.rgb = RGBColor(246, 1, 64)  # Red color
-                p.alignment = PP_ALIGN.LEFT
+                p.alignment = PP_ALIGN.LEFT  # Center the link text
                 r = p.runs[0]
                 r.hyperlink.address = link
+
 
         # Get data from combined_sources
         logger.debug("Processing combined sources data")
@@ -481,25 +516,8 @@ def create_ppt(data_frames, output_path, start_date, end_date, company_name, com
         sentiment_data = company_data.groupby(['Day', 'Sentiment']).size().unstack(fill_value=0)
         sentiment_data = sentiment_data.sort_index()
         sentiment_counts = get_sentiment_counts(combined_data)
-        
-        # Add chart titles
-        title_box = slide3.shapes.add_textbox(Inches(0.5), Inches(1.3), Inches(4.5), Inches(0.3))
-        tf = title_box.text_frame
-        p = tf.add_paragraph()
-        p.text = "Sentiment Trend Over Time"
-        p.font.size = Pt(14)
-        p.font.bold = True
-        p.alignment = PP_ALIGN.CENTER
 
-        title_box = slide3.shapes.add_textbox(Inches(5.5), Inches(1.3), Inches(4.5), Inches(0.3))
-        tf = title_box.text_frame
-        p = tf.add_paragraph()
-        p.text = "Overall Sentiment Distribution"
-        p.font.size = Pt(14)
-        p.font.bold = True
-        p.alignment = PP_ALIGN.CENTER
-        
-        # Create multiline chart
+        # Create multiline chart (bottom left)
         logger.debug("Creating multiline chart")
         chart_data = CategoryChartData()
         chart_data.categories = sentiment_data.index.tolist()
@@ -509,8 +527,8 @@ def create_ppt(data_frames, output_path, start_date, end_date, company_name, com
             if sentiment in sentiment_data.columns:
                 chart_data.add_series(series_name, sentiment_data[sentiment].tolist())
         
-        left, top = bottom_left
-        x, y, cx, cy = left, top, Inches(4.5), Inches(3)
+        left, top = left_col_x, bottom_row_y
+        x, y, cx, cy = left, top, section_width, bottom_section_height
         chart = slide3.shapes.add_chart(XL_CHART_TYPE.LINE, x, y, cx, cy, chart_data).chart
         chart.has_legend = True
         chart.legend.position = XL_LEGEND_POSITION.TOP
@@ -532,13 +550,8 @@ def create_ppt(data_frames, output_path, start_date, end_date, company_name, com
             sentiment_counts.get(-1, 0)
         ])
         
-        left, top = bottom_right
-        x, y, cx, cy = left, top, Inches(4.5), Inches(3)
-        # Add title for donut chart
-        donut_title = slide3.shapes.add_textbox(
-            x, y, cx, Inches(0.3)
-        )
-
+        left, top = right_col_x, bottom_row_y
+        x, y, cx, cy = left, top, section_width, bottom_section_height
         donut = slide3.shapes.add_chart(XL_CHART_TYPE.DOUGHNUT, x, y, cx, cy, donut_data).chart
         donut.has_legend = True
         donut.legend.position = XL_LEGEND_POSITION.TOP
@@ -716,6 +729,7 @@ def create_ppt(data_frames, output_path, start_date, end_date, company_name, com
             
             # Remove legend
             chart.has_legend = False
+            chart.has_title = False
             
             # Set white background for chart area and plot area
             try:
