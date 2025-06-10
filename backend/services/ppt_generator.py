@@ -440,13 +440,13 @@ def create_ppt(data_frames, output_path, start_date, end_date, company_name, com
         # region Third slide - Grid layout with links and charts
         logger.debug("Creating third slide with grid layout")
         slide3 = prs.slides.add_slide(prs.slide_layouts[5])
-        
+
         # Remove default textbox
         for shape in slide3.shapes:
             if shape.has_text_frame:
                 sp = shape._element
                 sp.getparent().remove(sp)
-        
+
         add_slide_header(slide3, company_logo_path, start_date, end_date, "Sentiment Analysis")
         add_side_line(slide3)
 
@@ -456,30 +456,40 @@ def create_ppt(data_frames, output_path, start_date, end_date, company_name, com
         fill.solid()
         fill.fore_color.rgb = SLIDE_BG_COLOR
 
-        # Grid layout positions
+        # Updated grid layout positions
         # Top row starts below header
         top_row_y = Inches(1)
-        # Bottom row starts at middle of slide
-        bottom_row_y = Inches(3.5)
+        # Bottom row starts lower to accommodate larger top section
+        bottom_row_y = Inches(4)
         # Left column starts at left margin
         left_col_x = Inches(0.5)
         # Right column starts at middle of slide
         right_col_x = Inches(6.5)
         # Width for each section
-        section_width = Inches(5.5)
-        # Height for top sections (links)
-        top_section_height = Inches(2)
-        # Height for bottom sections (charts)
-        bottom_section_height = Inches(3.5)
-        
+        section_width = Inches(6.5)
+        # Increased height for top sections (links)
+        top_section_height = Inches(2.5)
+        # Reduced height for bottom sections (charts)
+        bottom_section_height = Inches(3)
+
+        # Chart specific widths
+        multiline_chart_width = Inches(7)  # Increased by 1 inch
+        donut_chart_width = Inches(5)     # Reduced by 1 inch
+
+        # Adjusted positioning for centered charts
+        multiline_chart_x = Inches(0.5)
+        donut_chart_x = Inches(8)  # Adjusted to center the smaller donut chart
+
         # Add positive links section (top left)
         if positive_links:
             left, top = left_col_x, top_row_y
-            width = section_width
-            height = Inches(0.5)  # Reduced height for links
-            
+            width = section_width - Inches(0.5)  # Adjusted width to fit better
+            height = Inches(0.5)  # Height for individual links
+            title_height = Inches(0.3)
+
             # Add title with split colors
-            title_box = slide3.shapes.add_textbox(left, top, width, Inches(0.3))
+            bg_box = add_bg_box(slide3, left, top, width, top_section_height + Inches(0.2), color=CHART_BG_COLOR)
+            title_box = slide3.shapes.add_textbox(left, top, width, title_height)
             tf = title_box.text_frame
 
             p = tf.add_paragraph()
@@ -496,7 +506,7 @@ def create_ppt(data_frames, output_path, start_date, end_date, company_name, com
             run2.font.size = Pt(16)
             run2.font.bold = True
             p.alignment = PP_ALIGN.LEFT
-            top += Inches(0.3)  # Reduced spacing after title
+            top += Inches(0.3)  # Spacing after title
             tf.word_wrap = True
             
             for i, link in enumerate(positive_links):
@@ -507,19 +517,20 @@ def create_ppt(data_frames, output_path, start_date, end_date, company_name, com
                 p.text = f"🔗 {link}"
                 p.font.size = Pt(12)
                 p.font.color.rgb = RGBColor(0, 112, 192)  # Blue color
-                p.alignment = PP_ALIGN.LEFT  # Center the link text
+                p.alignment = PP_ALIGN.LEFT
                 r = p.runs[0]
                 r.hyperlink.address = link
 
 
         # Add negative links section (top right)
         if negative_links:
-            left, top = right_col_x, top_row_y
-            width = section_width
-            height = Inches(0.5)  # Reduced height for links
-            
+            left, top = right_col_x + Inches(0.5), top_row_y
+            width = section_width - Inches(0.5)  # Adjusted width to fit better
+            height = Inches(0.5)  # Height for individual links
+            title_height = Inches(0.3)
+            bg_box = add_bg_box(slide3, left, top, width, top_section_height + Inches(0.2), color=CHART_BG_COLOR)
             # Add title with split colors
-            title_box = slide3.shapes.add_textbox(left, top, width, Inches(0.3))
+            title_box = slide3.shapes.add_textbox(left, top, width, title_height)
             tf = title_box.text_frame
             p = tf.add_paragraph()
             # Add "Negativ" in red
@@ -535,7 +546,7 @@ def create_ppt(data_frames, output_path, start_date, end_date, company_name, com
             run2.font.size = Pt(16)
             run2.font.bold = True
             p.alignment = PP_ALIGN.LEFT
-            top += Inches(0.3)  # Reduced spacing after title
+            top += Inches(0.3)  # Spacing after title
             tf.word_wrap = True
             
             for i, link in enumerate(negative_links):
@@ -546,19 +557,18 @@ def create_ppt(data_frames, output_path, start_date, end_date, company_name, com
                 p.text = f"🔗 {link}"
                 p.font.size = Pt(12)
                 p.font.color.rgb = RGBColor(246, 1, 64)  # Red color
-                p.alignment = PP_ALIGN.LEFT  # Center the link text
+                p.alignment = PP_ALIGN.LEFT
                 r = p.runs[0]
                 r.hyperlink.address = link
-
 
         # Get data from combined_sources
         logger.debug("Processing combined sources data")
         if 'combined_sources' not in data_frames:
             raise ValueError("combined_sources Excel file is missing")
-        
+
         if 'News' not in data_frames['combined_sources']:
             raise ValueError("News sheet is missing in combined_sources Excel file")
-        
+
         combined_data = data_frames['combined_sources']['News']
         combined_data['Day'] = pd.to_datetime(combined_data['Day'])
         company_data = combined_data[combined_data['Company'] == company_name]
@@ -566,18 +576,18 @@ def create_ppt(data_frames, output_path, start_date, end_date, company_name, com
         sentiment_data = sentiment_data.sort_index()
         sentiment_counts = get_sentiment_counts(combined_data)
 
-        # Create multiline chart (bottom left)
+        # Create multiline chart (bottom left) - wider
         logger.debug("Creating multiline chart")
         chart_data = CategoryChartData()
         chart_data.categories = sentiment_data.index.tolist()
-        
+
         for sentiment in [1, 0, -1]:
             series_name = "Positive" if sentiment == 1 else "Neutral" if sentiment == 0 else "Negative"
             if sentiment in sentiment_data.columns:
                 chart_data.add_series(series_name, sentiment_data[sentiment].tolist())
-        
-        left, top = left_col_x, bottom_row_y
-        x, y, cx, cy = left, top, section_width, bottom_section_height
+
+        left, top = multiline_chart_x, bottom_row_y
+        x, y, cx, cy = left, top, multiline_chart_width, bottom_section_height
 
         # White background card
         bg_box = add_bg_box(slide3, x, y, cx, cy, color=CHART_BG_COLOR)
@@ -586,14 +596,14 @@ def create_ppt(data_frames, output_path, start_date, end_date, company_name, com
         chart.has_legend = True
         chart.legend.position = XL_LEGEND_POSITION.TOP
         chart.legend.font.size = Pt(12)
-        
+
         # Set chart background and formatting
         apply_chart_formatting(chart, title="Sentiment Trend Over Time")
         for i, series in enumerate(chart.series):
             series.format.line.color.rgb = SENTIMENT_COLORS[list(SENTIMENT_COLORS.keys())[i]]
             series.format.line.width = Pt(2)
-        
-        # Create donut chart (bottom right)
+
+        # Create donut chart (bottom right) - narrower and centered
         logger.debug("Creating donut chart")
         donut_data = ChartData()
         donut_data.categories = ['Positive', 'Neutral', 'Negative']
@@ -602,9 +612,9 @@ def create_ppt(data_frames, output_path, start_date, end_date, company_name, com
             sentiment_counts.get(0, 0),
             sentiment_counts.get(-1, 0)
         ])
-        
-        left, top = right_col_x, bottom_row_y
-        x, y, cx, cy = left, top, section_width, bottom_section_height
+
+        left, top = donut_chart_x, bottom_row_y
+        x, y, cx, cy = left, top, donut_chart_width, bottom_section_height
         bg_box = add_bg_box(slide3, x, y, cx, cy, color=CHART_BG_COLOR)
 
         donut = slide3.shapes.add_chart(XL_CHART_TYPE.DOUGHNUT, x, y, cx, cy, donut_data).chart
@@ -617,10 +627,10 @@ def create_ppt(data_frames, output_path, start_date, end_date, company_name, com
         donut.chart_title.text_frame.paragraphs[0].font.size = Pt(14)
         donut.chart_title.text_frame.paragraphs[0].font.bold = True
         donut.chart_title.text_frame.paragraphs[0].font.color.rgb = HEADER_TEXT_COLOR  # Red color for title
-        
+
         # Set chart background
         donut.chart_style = 2  # White background
-        
+
         # Set colors for donut chart and add data labels with arrows
         for i, point in enumerate(donut.series[0].points):
             point.format.fill.solid()
@@ -934,7 +944,7 @@ def create_ppt(data_frames, output_path, start_date, end_date, company_name, com
             'Baxış sayı': '👁️'
         }
 
-        left = Inches(0.5)
+        left = Inches(1)
         header_height = Inches(0.8)
         top = header_height + Inches(0.2)  # Start below header with small margin
         metrics_width = Inches(2.2)
@@ -1082,10 +1092,10 @@ def create_ppt(data_frames, output_path, start_date, end_date, company_name, com
                     chart_data.add_series(series_name, sentiment_by_date[sentiment].tolist())
             
             # Position multiline chart to right of donut
-            x = right_section_left + donut_size + Inches(0.5)  # After donut chart
-            y = Inches(1.25)
+            x = right_section_left + donut_size + Inches(0.3)  # After donut chart
+            y = Inches(1.2)
             cx = right_width - donut_size - Inches(0.3)  # Remaining width
-            cy = donut_size - Inches(0.25)  # Same height as donut
+            cy = donut_size - Inches(0.4)  # Same height as donut
             bg_box = add_bg_box(slide6, x, y, cx, cy, color=CHART_BG_COLOR)
             chart = slide6.shapes.add_chart(XL_CHART_TYPE.LINE, x, y, cx, cy, chart_data).chart
             chart.has_legend = True
@@ -1121,7 +1131,7 @@ def create_ppt(data_frames, output_path, start_date, end_date, company_name, com
             x = right_section_left
             y = Inches(4.5)  # Below upper charts
             cx = right_width  # Full width of right section
-            cy = Inches(3)  # Remaining height
+            cy = Inches(2.5)  # Remaining height
             bg_box = add_bg_box(slide6, x, y, cx, cy, color=CHART_BG_COLOR)
             chart = slide6.shapes.add_chart(XL_CHART_TYPE.COLUMN_CLUSTERED, x, y, cx, cy, chart_data).chart
             chart.has_legend = True
@@ -1358,7 +1368,7 @@ def create_ppt(data_frames, output_path, start_date, end_date, company_name, com
         }
 
         # Set up left section (20% width) for metrics
-        left = Inches(0.5)
+        left = Inches(0.8)
         header_height = Inches(0.8)
         top = header_height + Inches(0.2)  # Start below header with small margin
         metrics_width = Inches(2.7)  # ~20% of slide width (13.33")
@@ -1504,9 +1514,9 @@ def create_ppt(data_frames, output_path, start_date, end_date, company_name, com
                     chart_data.add_series(series_name, sentiment_by_date[sentiment].tolist())
             
             x = right_section_left + donut_size + Inches(0.5)  # After donut chart
-            y = Inches(1.25)
+            y = Inches(1.2)
             cx = right_width - donut_size - Inches(0.5)  # Remaining width
-            cy = donut_size - Inches(0.25)  # Same height as donut
+            cy = donut_size - Inches(0.4)  # Same height as donut
             bg_box = add_bg_box(slide9, x, y, cx, cy, color=CHART_BG_COLOR)
             chart = slide9.shapes.add_chart(XL_CHART_TYPE.LINE, x, y, cx, cy, chart_data).chart
             chart.has_legend = True
@@ -1543,7 +1553,7 @@ def create_ppt(data_frames, output_path, start_date, end_date, company_name, com
             x = right_section_left
             y = Inches(4.5)  # Position below the top charts
             cx = right_width  # Full width of right section
-            cy = Inches(3)  # Height
+            cy = Inches(2.5)  # Height
             bg_box = add_bg_box(slide9, x, y, cx, cy, color=CHART_BG_COLOR)
             chart = slide9.shapes.add_chart(XL_CHART_TYPE.COLUMN_CLUSTERED, x, y, cx, cy, chart_data).chart
             chart.has_legend = True
@@ -1641,7 +1651,7 @@ def create_ppt(data_frames, output_path, start_date, end_date, company_name, com
                 x_line = Inches(4.5)  # Start after donut chart
                 y_line = Inches(1.2)  # Same vertical alignment as donut
                 cx_line = Inches(8.33)  # Remaining width
-                cy_line = Inches(3)
+                cy_line = Inches(3.1)
 
                 bg_box = add_bg_box(slide10, x_line, y_line, cx_line, cy_line, color=CHART_BG_COLOR)
                 chart = slide10.shapes.add_chart(
