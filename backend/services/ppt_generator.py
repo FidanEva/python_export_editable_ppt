@@ -28,11 +28,17 @@ SENTIMENT_COLORS = {
 
 # Define metric icons
 METRIC_ICONS = {
-    'Posts Count': '📝',
-    'Total Comments': '💬',
-    'Total Likes': '👍',
-    'Total Shares': '🔄',
-    'Total Views': '👁️'
+    'Post sayı': '🔔',
+    'Şərh sayı': '💬',
+    'Bəyənmə sayı': '👍',
+    'Paylaşım sayı': '📤',
+    'Baxış sayı': '👁'
+}
+
+CHARTS_ICONS = {
+    'Sentiment Trend': '📉',
+    'Sentiment Distribution': '📊',
+    "Time Distribution": '🕒',
 }
 
 def format_chart_axes(chart, category_font_size=6, value_font_size=6, rotation_angle=-45):
@@ -156,7 +162,7 @@ def add_side_line(slide):
 # Function to apply consistent chart formatting
 def apply_chart_formatting(chart, use_legend=True, legend_position=XL_LEGEND_POSITION.TOP, 
                          category_font_size=6, value_font_size=6, 
-                         title=None, title_size=14):
+                         title=None, title_size=14, icon='📊'):
     """Helper function for consistent chart formatting across slides"""
     
     # Basic chart settings
@@ -173,9 +179,9 @@ def apply_chart_formatting(chart, use_legend=True, legend_position=XL_LEGEND_POS
     # Title settings
     if title:
         chart.has_title = True
-        chart.chart_title.text_frame.text = f"📊 {title}"
+        chart.chart_title.text_frame.text = f"{icon} {title}"
         chart.chart_title.text_frame.paragraphs[0].font.size = Pt(title_size)
-        chart.chart_title.text_frame.paragraphs[0].font.bold = True
+        chart.chart_title.text_frame.paragraphs[0].font.bold = False
         chart.chart_title.text_frame.paragraphs[0].font.color.rgb = HEADER_TEXT_COLOR
         
     # Axis formatting
@@ -286,7 +292,7 @@ def create_ppt(data_frames, output_path, start_date, end_date, company_name, com
         tf.margin_left = tf.margin_right = 0
         p = tf.paragraphs[0]
         p.text = "Online/Sosial və ənənəvi media\ndatalarının əsasında təhlil."
-        p.font.size = Pt(14)
+        p.font.size = Pt(14.5)
         p.font.color.rgb = RGBColor(0, 123, 191)
         p.line_spacing = Pt(18)
         top += Inches(0.6)
@@ -304,7 +310,7 @@ def create_ppt(data_frames, output_path, start_date, end_date, company_name, com
         tf.margin_left = tf.margin_right = 0
         p = tf.paragraphs[0]
         p.text = "Analitik hesabat"
-        p.font.size = Pt(14)
+        p.font.size = Pt(13)
         p.font.color.rgb = RGBColor(0, 123, 191)
         top += Inches(0.3)
 
@@ -447,7 +453,7 @@ def create_ppt(data_frames, output_path, start_date, end_date, company_name, com
                 sp = shape._element
                 sp.getparent().remove(sp)
 
-        add_slide_header(slide3, company_logo_path, start_date, end_date, "Sentiment Analysis")
+        add_slide_header(slide3, company_logo_path, start_date, end_date, "XƏBƏRLƏRİN ANALİZİ")
         add_side_line(slide3)
 
         # Set slide background
@@ -456,7 +462,7 @@ def create_ppt(data_frames, output_path, start_date, end_date, company_name, com
         fill.solid()
         fill.fore_color.rgb = SLIDE_BG_COLOR
 
-        # Updated grid layout positions
+        # grid layout positions
         # Top row starts below header
         top_row_y = Inches(1)
         # Bottom row starts lower to accommodate larger top section
@@ -467,14 +473,12 @@ def create_ppt(data_frames, output_path, start_date, end_date, company_name, com
         right_col_x = Inches(6.5)
         # Width for each section
         section_width = Inches(6.5)
-        # Increased height for top sections (links)
         top_section_height = Inches(2.5)
-        # Reduced height for bottom sections (charts)
         bottom_section_height = Inches(3)
 
         # Chart specific widths
-        multiline_chart_width = Inches(7)  # Increased by 1 inch
-        donut_chart_width = Inches(5)     # Reduced by 1 inch
+        multiline_chart_width = Inches(7)
+        donut_chart_width = Inches(5)
 
         # Adjusted positioning for centered charts
         multiline_chart_x = Inches(0.5)
@@ -504,7 +508,7 @@ def create_ppt(data_frames, output_path, start_date, end_date, company_name, com
             run2.text = "xəbərlərə və saylar aşağıda qeyd olunmuşdur. Xəbərlərə aid nümunələrə başlıqlardan keçid edə bilərsiniz."
             run2.font.color.rgb = RGBColor(0, 0, 0)  # Black color
             run2.font.size = Pt(16)
-            run2.font.bold = True
+            run2.font.bold = False
             p.alignment = PP_ALIGN.LEFT
             top += Inches(0.3)  # Spacing after title
             tf.word_wrap = True
@@ -525,7 +529,7 @@ def create_ppt(data_frames, output_path, start_date, end_date, company_name, com
         # Add negative links section (top right)
         if negative_links:
             left, top = right_col_x + Inches(0.5), top_row_y
-            width = section_width - Inches(0.5)  # Adjusted width to fit better
+            width = section_width - Inches(0.5)
             height = Inches(0.5)  # Height for individual links
             title_height = Inches(0.3)
             bg_box = add_bg_box(slide3, left, top, width, top_section_height + Inches(0.2), color=CHART_BG_COLOR)
@@ -544,7 +548,7 @@ def create_ppt(data_frames, output_path, start_date, end_date, company_name, com
             run2.text = "xəbərlər və saylar aşağıda qeyd olunmuşdur. Xəbərlərə aid nümunələrə başlıqlardan keçid edə bilərsiniz."
             run2.font.color.rgb = RGBColor(0, 0, 0)  # Black color
             run2.font.size = Pt(16)
-            run2.font.bold = True
+            run2.font.bold = False
             p.alignment = PP_ALIGN.LEFT
             top += Inches(0.3)  # Spacing after title
             tf.word_wrap = True
@@ -598,7 +602,7 @@ def create_ppt(data_frames, output_path, start_date, end_date, company_name, com
         chart.legend.font.size = Pt(12)
 
         # Set chart background and formatting
-        apply_chart_formatting(chart, title="Sentiment Trend Over Time")
+        apply_chart_formatting(chart, title="Xəbərlərin sentiment və zamana görə bölgüsü", icon=CHARTS_ICONS['Sentiment Trend'])
         for i, series in enumerate(chart.series):
             series.format.line.color.rgb = SENTIMENT_COLORS[list(SENTIMENT_COLORS.keys())[i]]
             series.format.line.width = Pt(2)
@@ -620,12 +624,12 @@ def create_ppt(data_frames, output_path, start_date, end_date, company_name, com
         donut = slide3.shapes.add_chart(XL_CHART_TYPE.DOUGHNUT, x, y, cx, cy, donut_data).chart
         donut.has_legend = True
         donut.legend.position = XL_LEGEND_POSITION.TOP
-        donut.legend.font.size = Pt(10)
+        donut.legend.font.size = Pt(12)
 
         donut.has_title = True
-        donut.chart_title.text_frame.text = "📊 Bank postlarının sentiment bölgüsü"
+        donut.chart_title.text_frame.text = f"{CHARTS_ICONS['Time Distribution']} Bank postlarının sentiment bölgüsü"
         donut.chart_title.text_frame.paragraphs[0].font.size = Pt(14)
-        donut.chart_title.text_frame.paragraphs[0].font.bold = True
+        donut.chart_title.text_frame.paragraphs[0].font.bold = False
         donut.chart_title.text_frame.paragraphs[0].font.color.rgb = HEADER_TEXT_COLOR  # Red color for title
 
         # Set chart background
@@ -639,7 +643,15 @@ def create_ppt(data_frames, output_path, start_date, end_date, company_name, com
             point.has_data_label = True
             point.data_label.font.size = Pt(10)
             point.data_label.font.bold = True
-            point.data_label.number_format = '#,##0'
+            # Calculate percentage for current point
+            values = [sentiment_counts.get(1, 0), sentiment_counts.get(0, 0), sentiment_counts.get(-1, 0)]
+            total = sum(values)
+            current_value = values[i]
+            percentage = (current_value / total) * 100 if total > 0 else 0
+            # Format label to show both count and percentage
+            point.data_label.text_frame.text = f"{current_value:,} ({percentage:.1f}%)"
+            for paragraph in point.data_label.text_frame.paragraphs:
+                paragraph.font.size = Pt(8)
         # endregion
 
         # region Fourth slide - Vertical multibar chart
@@ -651,7 +663,7 @@ def create_ppt(data_frames, output_path, start_date, end_date, company_name, com
                 sp = shape._element
                 sp.getparent().remove(sp)
 
-        add_slide_header(slide4, company_logo_path, start_date, end_date, "Xəbərlərin analizi")
+        add_slide_header(slide4, company_logo_path, start_date, end_date, "XƏBƏRLƏRİN ANALİZİ")
         add_side_line(slide4)
 
         # Set slide background
@@ -693,15 +705,14 @@ def create_ppt(data_frames, output_path, start_date, end_date, company_name, com
         chart.legend.position = XL_LEGEND_POSITION.TOP
         chart.legend.include_in_layout = True
         chart.legend.font.size = Pt(12)
-        chart.legend.font.bold = True
+        chart.legend.font.bold = False
         
         # Set chart title with icon
         chart.has_title = True
         chart.chart_title.text_frame.text = "📊 Post saylarına görə bankların bölgüsü"
         chart.chart_title.text_frame.paragraphs[0].font.size = Pt(14)
-        chart.chart_title.text_frame.paragraphs[0].font.bold = True
+        chart.chart_title.text_frame.paragraphs[0].font.bold = False
         chart.chart_title.text_frame.paragraphs[0].font.color.rgb = HEADER_TEXT_COLOR  # Red color for title
-        
         # Set white background for chart
         chart.chart_style = 2  # White background style
         
@@ -750,6 +761,14 @@ def create_ppt(data_frames, output_path, start_date, end_date, company_name, com
         for i, series in enumerate(chart.series):
             series.format.fill.solid()
             series.format.fill.fore_color.rgb = SENTIMENT_COLORS[list(SENTIMENT_COLORS.keys())[i]]
+            # Add data labels to outside end
+            series.has_data_labels = True
+            data_labels = series.data_labels
+            data_labels.position = XL_DATA_LABEL_POSITION.OUTSIDE_END
+            data_labels.font.size = Pt(10)
+            data_labels.font.color.rgb = RGBColor(0, 0, 0)  # Black text
+            data_labels.font.bold = True
+            data_labels.number_format = '0'  # Show whole numbers only
         # endregion
 
         # region Fifth slide - Author count horizontal bar chart
@@ -786,8 +805,8 @@ def create_ppt(data_frames, output_path, start_date, end_date, company_name, com
             # Slide dimensions: 13.33" x 7.5"
             # Header height: 0.8"
             # Available space: 7.5 - 0.8 = 6.7"
-            chart_width = Inches(11.5)  # Increased width further
-            chart_height = Inches(6.0)  # Increased height further
+            chart_width = Inches(11.5)
+            chart_height = Inches(6.0)
             
             # Center horizontally: (13.33 - 11.5) / 2 = 0.915
             # Center vertically in remaining space: 0.8 + (6.7 - 6.0) / 2 = 1.15
@@ -935,25 +954,15 @@ def create_ppt(data_frames, output_path, start_date, end_date, company_name, com
             'Baxış sayı': fb_metrics['view_count'].sum()
         }
 
-        # Icon mapping for each metric
-        metric_icons = {
-            'Post sayı': '📝',
-            'Şərh sayı': '💬',
-            'Bəyənmə sayı': '👍',
-            'Paylaşım sayı': '🔄',
-            'Baxış sayı': '👁️'
-        }
-
         left = Inches(1)
         header_height = Inches(0.8)
         top = header_height + Inches(0.2)  # Start below header with small margin
         metrics_width = Inches(2.2)
-        metrics_height = Inches(1.0)  # Reduced from 1.2 to fit better
+        metrics_height = Inches(1.0)
         slide_height = Inches(7.5)  # Standard slide height
         available_height = slide_height - header_height - Inches(0.4)  # Bottom margin
         total_items = len(metrics)
 
-        # Increased spacing between cards
         card_spacing = Inches(0.3)  # Space between cards
         total_cards_height = metrics_height * total_items
         total_spacing_height = card_spacing * (total_items - 1)
@@ -967,8 +976,8 @@ def create_ppt(data_frames, output_path, start_date, end_date, company_name, com
             bg_box = add_bg_box(slide6, left, box_top, metrics_width, metrics_height, color=CHART_BG_COLOR)
 
             # Red icon background (adjusted for new card height)
-            icon_width = Inches(0.5)  # Slightly reduced to fit new card height
-            icon_height = Inches(0.5)  # Slightly reduced to fit new card height
+            icon_width = Inches(0.5)
+            icon_height = Inches(0.5)
             icon_left = left + Inches(0.1)
             icon_top = box_top + (metrics_height - icon_height) / 2  # Centered vertically
             
@@ -991,7 +1000,7 @@ def create_ppt(data_frames, output_path, start_date, end_date, company_name, com
             icon_frame.vertical_anchor = MSO_ANCHOR.MIDDLE  # Center vertically
             
             icon_p = icon_frame.paragraphs[0]
-            icon_p.text = metric_icons.get(metric, "📊")  # Use specific icon or default
+            icon_p.text = METRIC_ICONS.get(metric, "📊")  # Use specific icon or default
             icon_p.alignment = PP_ALIGN.CENTER
             icon_p.font.size = Pt(22)  # Adjusted for smaller icon box
             icon_p.font.color.rgb = RGBColor(255, 255, 255)
@@ -1013,7 +1022,7 @@ def create_ppt(data_frames, output_path, start_date, end_date, company_name, com
             value_p = tf.paragraphs[0]
             value_p.text = f"{value:,}"
             value_p.alignment = PP_ALIGN.LEFT
-            value_p.font.size = Pt(24)  # Reduced from 26 to fit smaller cards
+            value_p.font.size = Pt(24)
             value_p.font.bold = True
             value_p.font.color.rgb = RGBColor(51, 51, 51)  # Dark gray for better readability
             
@@ -1021,7 +1030,7 @@ def create_ppt(data_frames, output_path, start_date, end_date, company_name, com
             metric_p = tf.add_paragraph()
             metric_p.text = metric
             metric_p.alignment = PP_ALIGN.LEFT
-            metric_p.font.size = Pt(11)  # Reduced from 12 to fit smaller cards
+            metric_p.font.size = Pt(11)
             metric_p.font.color.rgb = RGBColor(102, 102, 102)  # Medium gray
             
         # Right side - Sentiment analysis
@@ -1060,12 +1069,12 @@ def create_ppt(data_frames, output_path, start_date, end_date, company_name, com
             donut.has_legend = True
             donut.has_title = False
             donut.legend.position = XL_LEGEND_POSITION.TOP
-            donut.legend.font.size = Pt(8)  # Reduced legend size
+            donut.legend.font.size = Pt(12)
 
             donut.has_title = True
-            donut.chart_title.text_frame.text = "📊 Ümumi sentiment bölgüsü"
+            donut.chart_title.text_frame.text = f"{CHARTS_ICONS['Time Distribution']} Postların sentiment bölgüsü"
             donut.chart_title.text_frame.paragraphs[0].font.size = Pt(14)
-            donut.chart_title.text_frame.paragraphs[0].font.bold = True
+            donut.chart_title.text_frame.paragraphs[0].font.bold = False
             donut.chart_title.text_frame.paragraphs[0].font.color.rgb = HEADER_TEXT_COLOR  # Red color for title
             
             # Set chart background
@@ -1079,8 +1088,20 @@ def create_ppt(data_frames, output_path, start_date, end_date, company_name, com
                 point.has_data_label = True
                 point.data_label.font.size = Pt(10)
                 point.data_label.font.bold = True
-                point.data_label.number_format = '#,##0'
-                
+                # Calculate percentage for current point
+                values = [
+                    sentiment_counts.get(1, 0),
+                    sentiment_counts.get(0, 0),
+                    sentiment_counts.get(-1, 0)
+                ]
+                total = sum(values)
+                current_value = values[i]
+                percentage = (current_value / total) * 100 if total > 0 else 0
+                # Format label to show both count and percentage
+                point.data_label.text_frame.text = f"{current_value:,} ({percentage:.1f}%)"
+                for paragraph in point.data_label.text_frame.paragraphs:
+                    paragraph.font.size = Pt(8) 
+
             # Multiline chart
             sentiment_by_date = company_sentiment.groupby('Day')['Sentiment'].value_counts().unstack(fill_value=0)
             chart_data = CategoryChartData()
@@ -1102,13 +1123,13 @@ def create_ppt(data_frames, output_path, start_date, end_date, company_name, com
             chart.legend.position = XL_LEGEND_POSITION.TOP
             chart.legend.font.size = Pt(12)
             chart.has_title = True
-            chart.chart_title.text_frame.text = "📊 Postların zamana və sentimentə görə bölgüsü"
+            chart.chart_title.text_frame.text = f"{CHARTS_ICONS['Sentiment Trend']} Postların zamana və sentimentə görə bölgüsü"
             paragraph = chart.chart_title.text_frame.paragraphs[0]
             paragraph.font.size = Pt(14)
             paragraph.font.bold = True
             paragraph.font.color.rgb = HEADER_TEXT_COLOR
             # Set chart background and formatting
-            apply_chart_formatting(chart, title="Postların zamana və sentimentə görə bölgüsü")
+            apply_chart_formatting(chart, title="Postların zamana və sentimentə görə bölgüsü", icon=CHARTS_ICONS['Sentiment Trend'])
             for i, series in enumerate(chart.series):
                 series.format.line.color.rgb = SENTIMENT_COLORS[list(SENTIMENT_COLORS.keys())[i]]
                 series.format.line.width = Pt(2)
@@ -1362,22 +1383,17 @@ def create_ppt(data_frames, output_path, start_date, end_date, company_name, com
             'Bəyənmə sayı': company_metrics['Likes'].sum(),
             'Şərh sayı': company_metrics['Comments'].sum()
         }
-        network_metric_icons = {
-            'Bəyənmə sayı': '👍',
-            'Şərh sayı': '💬'
-        }
 
         # Set up left section (20% width) for metrics
         left = Inches(0.8)
         header_height = Inches(0.8)
         top = header_height + Inches(0.2)  # Start below header with small margin
         metrics_width = Inches(2.7)  # ~20% of slide width (13.33")
-        metrics_height = Inches(1.0)  # Reduced height to fit better
+        metrics_height = Inches(1.0)
         slide_height = Inches(7.5)  # Standard slide height
         available_height = slide_height - header_height - Inches(0.4)  # Bottom margin
         total_items = len(network_metrics)
 
-        # Increased spacing between cards
         card_spacing = Inches(0.3)  # Space between cards
         total_cards_height = metrics_height * total_items
         total_spacing_height = card_spacing * (total_items - 1)
@@ -1416,7 +1432,7 @@ def create_ppt(data_frames, output_path, start_date, end_date, company_name, com
             icon_frame.vertical_anchor = MSO_ANCHOR.MIDDLE  # Center vertically
             
             icon_p = icon_frame.paragraphs[0]
-            icon_p.text = network_metric_icons.get(metric, "📊")  # Use specific icon or default
+            icon_p.text = METRIC_ICONS.get(metric, "📊")  # Use specific icon or default
             icon_p.alignment = PP_ALIGN.CENTER
             icon_p.font.size = Pt(22)  # Adjusted for icon box size
             icon_p.font.color.rgb = RGBColor(255, 255, 255)
@@ -1483,12 +1499,12 @@ def create_ppt(data_frames, output_path, start_date, end_date, company_name, com
             ).chart
             donut.has_legend = True
             donut.legend.position = XL_LEGEND_POSITION.TOP
-            donut.legend.font.size = Pt(8)  # Reduced legend size
+            donut.legend.font.size = Pt(12)
             
             donut.has_title = True
-            donut.chart_title.text_frame.text = "📊 Ümumi sentiment bölgüsü"
+            donut.chart_title.text_frame.text = f"{CHARTS_ICONS['Time Distribution']} Postların sentiment bölgüsü"
             donut.chart_title.text_frame.paragraphs[0].font.size = Pt(14)
-            donut.chart_title.text_frame.paragraphs[0].font.bold = True
+            donut.chart_title.text_frame.paragraphs[0].font.bold = False
             donut.chart_title.text_frame.paragraphs[0].font.color.rgb = HEADER_TEXT_COLOR  # Red color for title
             
             # Set chart background
@@ -1501,8 +1517,16 @@ def create_ppt(data_frames, output_path, start_date, end_date, company_name, com
                 point.has_data_label = True
                 point.data_label.font.size = Pt(10)
                 point.data_label.font.bold = True
-                point.data_label.number_format = '#,##0'
-                
+                # Calculate percentage for current point
+                values = [sentiment_counts.get(1, 0), sentiment_counts.get(0, 0), sentiment_counts.get(-1, 0)]
+                total = sum(values)
+                current_value = values[i]
+                percentage = (current_value / total) * 100 if total > 0 else 0
+                # Format label to show both count and percentage
+                point.data_label.text_frame.text = f"{current_value:,} ({percentage:.1f}%)"
+                for paragraph in point.data_label.text_frame.paragraphs:
+                    paragraph.font.size = Pt(8)
+                                    
             # Multiline chart
             sentiment_by_date = company_sentiment.groupby('Day')['Sentiment'].value_counts().unstack(fill_value=0)
             chart_data = CategoryChartData()
@@ -1523,7 +1547,8 @@ def create_ppt(data_frames, output_path, start_date, end_date, company_name, com
             chart.legend.position = XL_LEGEND_POSITION.TOP
             chart.legend.font.size = Pt(12)
             chart.has_title = True
-            chart.chart_title.text_frame.text = "📊 Postların zamana və sentimentə görə bölgüsü"
+
+            chart.chart_title.text_frame.text = f"{CHARTS_ICONS['Sentiment Trend']}  Postların zamana və sentimentə görə bölgüsü"
             paragraph = chart.chart_title.text_frame.paragraphs[0]
             paragraph.font.size = Pt(14)
             paragraph.font.bold = True
@@ -1619,13 +1644,14 @@ def create_ppt(data_frames, output_path, start_date, end_date, company_name, com
                 
                 donut.has_legend = True
                 donut.legend.position = XL_LEGEND_POSITION.TOP
-                donut.legend.font.size = Pt(10)
+                donut.legend.font.size = Pt(12)
                 donut.chart_style = 2  # White background 
                 
                 donut.has_title = True
-                donut.chart_title.text_frame.text = "📊 Postların sentiment bölgüsü"
+                
+                donut.chart_title.text_frame.text = f"{CHARTS_ICONS['Time Distribution']}  Postların sentiment bölgüsü"
                 donut.chart_title.text_frame.paragraphs[0].font.size = Pt(14)
-                donut.chart_title.text_frame.paragraphs[0].font.bold = True
+                donut.chart_title.text_frame.paragraphs[0].font.bold = False
                 donut.chart_title.text_frame.paragraphs[0].font.color.rgb = HEADER_TEXT_COLOR  # Red color for title
                 
                 # Apply colors and data labels to donut chart
@@ -1635,8 +1661,16 @@ def create_ppt(data_frames, output_path, start_date, end_date, company_name, com
                     point.has_data_label = True
                     point.data_label.font.size = Pt(10)
                     point.data_label.font.bold = True
-                    point.data_label.number_format = '#,##0'
-                
+                    # Calculate percentage for current point
+                    values = [sentiment_counts.get(1, 0), sentiment_counts.get(0, 0), sentiment_counts.get(-1, 0)]
+                    total = sum(values)
+                    current_value = values[i]
+                    percentage = (current_value / total) * 100 if total > 0 else 0
+                    # Format label to show both count and percentage
+                    point.data_label.text_frame.text = f"{current_value:,} ({percentage:.1f}%)"
+                    for paragraph in point.data_label.text_frame.paragraphs:
+                        paragraph.font.size = Pt(8)
+                                        
                 # Multiline chart in right half
                 sentiment_by_date = company_sentiment.groupby('Day')['Sentiment'].value_counts().unstack(fill_value=0)
                 chart_data = CategoryChartData()
@@ -1671,7 +1705,7 @@ def create_ppt(data_frames, output_path, start_date, end_date, company_name, com
                 for i, point in enumerate(donut.series[0].points):
                     point.format.fill.solid()
                     point.format.fill.fore_color.rgb = SENTIMENT_COLORS[list(SENTIMENT_COLORS.keys())[i]]
-                apply_chart_formatting(chart, title="Postların zamana və sentimentə görə bölgüsü")
+                apply_chart_formatting(chart, title="Postların zamana və sentimentə görə bölgüsü", icon=CHARTS_ICONS['Sentiment Trend'])
                 for i, series in enumerate(chart.series):
                     series.format.line.color.rgb = SENTIMENT_COLORS[list(SENTIMENT_COLORS.keys())[i]]
                     series.format.line.width = Pt(2)
@@ -1706,13 +1740,22 @@ def create_ppt(data_frames, output_path, start_date, end_date, company_name, com
                 ).chart
                 
                 chart.has_legend = True
+                chart.has_data_labels = True
                 chart.legend.position = XL_LEGEND_POSITION.TOP
                 chart.legend.font.size = Pt(12)
                 
                 # Apply formatting and colors
-                apply_chart_formatting(chart)
-                apply_sentiment_colors(chart)
                 apply_chart_formatting(chart, title="Post saylarına görə bankların bölgüsü")
+                apply_sentiment_colors(chart)
+                
+                # Add data labels at outside end with size 10
+                for series in chart.series:
+                    series.has_data_labels = True
+                    data_labels = series.data_labels
+                    data_labels.position = XL_DATA_LABEL_POSITION.OUTSIDE_END
+                    data_labels.font.size = Pt(10)
+                    data_labels.font.bold = False
+                    data_labels.font.color.rgb = RGBColor(89, 89, 89)  # Match axis label color
             else:
                 logger.warning(f"No Linkedin data found for company: {company_name}")
         # endregion
@@ -1741,9 +1784,9 @@ def create_ppt(data_frames, output_path, start_date, end_date, company_name, com
         fill.solid()
         fill.fore_color.rgb = SLIDE_BG_COLOR
 
-        # Post layout settings - Increased image size
-        image_width = Inches(2.2)  # Increased from 1.8
-        vertical_spacing = Inches(0.15)  # Increased spacing
+        # Post layout settings
+        image_width = Inches(2.2)
+        vertical_spacing = Inches(0.15)
         horizontal_spacing = Inches(0.3)  # Space between images in same row
         caption_height = Inches(0.3)
         group_top = content_top + Inches(0.8)  # Space for section titles
@@ -1753,7 +1796,7 @@ def create_ppt(data_frames, output_path, start_date, end_date, company_name, com
         title_height = Inches(0.4)
         title_top = content_top + Inches(0.2)
 
-        # Negative posts title (left side) - Updated styling with background
+        # Negative posts title (left side)
         negative_title_left = Inches(0.5)
         negative_title_width = Inches(6)
 
@@ -1796,7 +1839,7 @@ def create_ppt(data_frames, output_path, start_date, end_date, company_name, com
 
         negative_p.alignment = PP_ALIGN.CENTER
 
-        # Positive posts title (right side) - Updated styling with background
+        # Positive posts title (right side)
         positive_title_left = Inches(6.83)  # Right half starts here
         positive_title_width = Inches(6)
 
@@ -1892,9 +1935,8 @@ def create_ppt(data_frames, output_path, start_date, end_date, company_name, com
         if positive_posts:
             layout_posts(slide11, positive_posts, group_center_x=Inches(9.75))  # Right half center
 
-        # Add clue card at bottom center with stick icon - Red background, narrower and taller
-        clue_card_width = Inches(2)  # Reduced width
-        clue_card_height = Inches(1.5)  # Increased height
+        clue_card_width = Inches(2)
+        clue_card_height = Inches(1.5)
         clue_card_left = (slide_width - clue_card_width) / 2  # Center horizontally
         clue_card_top = slide_height - clue_card_height - Inches(0.2)  # Bottom with margin
 
