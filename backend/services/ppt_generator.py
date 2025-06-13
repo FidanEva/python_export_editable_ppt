@@ -963,175 +963,172 @@ def create_ppt(data_frames, output_path, start_date, end_date, company_name, com
             'Baxış sayı': fb_metrics['view_count'].sum()
         }
 
-        left = Inches(1)
-        header_height = Inches(0.8)
-        top = header_height + Inches(0.2)  # Start below header with small margin
-        metrics_width = Inches(2.2)
-        metrics_height = Inches(1.0)
-        slide_height = Inches(7.5)  # Standard slide height
-        available_height = slide_height - header_height - Inches(0.4)  # Bottom margin
-        total_items = len(metrics)
+        if has_competitors:
+            left = Inches(1)
+            header_height = Inches(0.8)
+            top = header_height + Inches(0.2)  # Start below header with small margin
+            metrics_width = Inches(2.2)
+            metrics_height = Inches(1.0)
+            slide_height = Inches(7.5)  # Standard slide height
+            available_height = slide_height - header_height - Inches(0.4)  # Bottom margin
+            total_items = len(metrics)
 
-        card_spacing = Inches(0.3)  # Space between cards
-        total_cards_height = metrics_height * total_items
-        total_spacing_height = card_spacing * (total_items - 1)
-        remaining_space = available_height - total_cards_height - total_spacing_height
-        top_margin = remaining_space / 2
+            card_spacing = Inches(0.3)  # Space between cards
+            total_cards_height = metrics_height * total_items
+            total_spacing_height = card_spacing * (total_items - 1)
+            remaining_space = available_height - total_cards_height - total_spacing_height
+            top_margin = remaining_space / 2
 
-        for i, (metric, value) in enumerate(metrics.items()):
-            box_top = top + top_margin + (metrics_height * i) + (card_spacing * i)
-            
-            # White background card
-            bg_box = add_bg_box(slide6, left, box_top, metrics_width, metrics_height, color=CHART_BG_COLOR)
+            for i, (metric, value) in enumerate(metrics.items()):
+                box_top = top + top_margin + (metrics_height * i) + (card_spacing * i)
+                
+                # White background card
+                bg_box = add_bg_box(slide6, left, box_top, metrics_width, metrics_height, color=CHART_BG_COLOR)
 
-            # Red icon background (adjusted for new card height)
-            icon_width = Inches(0.5)
-            icon_height = Inches(0.5)
-            icon_left = left + Inches(0.1)
-            icon_top = box_top + (metrics_height - icon_height) / 2  # Centered vertically
-            
-            icon_box = slide6.shapes.add_shape(
-                MSO_SHAPE.ROUNDED_RECTANGLE,
-                icon_left, icon_top, icon_width, icon_height
-            )
-            icon_box.fill.solid()
-            icon_box.fill.fore_color.rgb = HEADER_TEXT_COLOR
-            icon_box.line.fill.background()  # Remove border
-            
-            # Icon text (white, centered inside red bg)
-            icon_text = slide6.shapes.add_textbox(
-                icon_left, icon_top, icon_width, icon_height
-            )
-            icon_frame = icon_text.text_frame
-            icon_frame.clear()
-            icon_frame.margin_top = Inches(0)
-            icon_frame.margin_bottom = Inches(0)
-            icon_frame.vertical_anchor = MSO_ANCHOR.MIDDLE  # Center vertically
-            
-            icon_p = icon_frame.paragraphs[0]
-            icon_p.text = METRIC_ICONS.get(metric, "📊")  # Use specific icon or default
-            icon_p.alignment = PP_ALIGN.CENTER
-            icon_p.font.size = Pt(22)  # Adjusted for smaller icon box
-            icon_p.font.color.rgb = RGBColor(255, 255, 255)
-            
-            # Combined value + metric label, vertically centered inside white bg
-            text_left = icon_left + icon_width + Inches(0.15)
-            text_width = metrics_width - icon_width - Inches(0.25)
-            
-            value_textbox = slide6.shapes.add_textbox(
-                text_left, box_top, text_width, metrics_height
-            )
-            tf = value_textbox.text_frame
-            tf.clear()
-            tf.margin_top = Inches(0)
-            tf.margin_bottom = Inches(0)
-            tf.vertical_anchor = MSO_ANCHOR.MIDDLE  # Center content vertically
-            
-            # Big number
-            value_p = tf.paragraphs[0]
-            value_p.text = f"{value:,}"
-            value_p.alignment = PP_ALIGN.LEFT
-            value_p.font.size = Pt(24)
-            value_p.font.bold = True
-            value_p.font.color.rgb = RGBColor(51, 51, 51)  # Dark gray for better readability
-            
-            # Metric name
-            metric_p = tf.add_paragraph()
-            metric_p.text = metric
-            metric_p.alignment = PP_ALIGN.LEFT
-            metric_p.font.size = Pt(11)
-            metric_p.font.color.rgb = RGBColor(102, 102, 102)  # Medium gray
-            
-        # Right side - Sentiment analysis
-        if 'Facebook' in data_frames['combined_sources']:
-            fb_sentiment_data = data_frames['combined_sources']['Facebook']
-            if has_competitors:
+                # Red icon background (adjusted for new card height)
+                icon_width = Inches(0.5)
+                icon_height = Inches(0.5)
+                icon_left = left + Inches(0.1)
+                icon_top = box_top + (metrics_height - icon_height) / 2  # Centered vertically
+                
+                icon_box = slide6.shapes.add_shape(
+                    MSO_SHAPE.ROUNDED_RECTANGLE,
+                    icon_left, icon_top, icon_width, icon_height
+                )
+                icon_box.fill.solid()
+                icon_box.fill.fore_color.rgb = HEADER_TEXT_COLOR
+                icon_box.line.fill.background()  # Remove border
+                
+                # Icon text (white, centered inside red bg)
+                icon_text = slide6.shapes.add_textbox(
+                    icon_left, icon_top, icon_width, icon_height
+                )
+                icon_frame = icon_text.text_frame
+                icon_frame.clear()
+                icon_frame.margin_top = Inches(0)
+                icon_frame.margin_bottom = Inches(0)
+                icon_frame.vertical_anchor = MSO_ANCHOR.MIDDLE  # Center vertically
+                
+                icon_p = icon_frame.paragraphs[0]
+                icon_p.text = METRIC_ICONS.get(metric, "📊")  # Use specific icon or default
+                icon_p.alignment = PP_ALIGN.CENTER
+                icon_p.font.size = Pt(22)  # Adjusted for smaller icon box
+                icon_p.font.color.rgb = RGBColor(255, 255, 255)
+                
+                # Combined value + metric label, vertically centered inside white bg
+                text_left = icon_left + icon_width + Inches(0.15)
+                text_width = metrics_width - icon_width - Inches(0.25)
+                
+                value_textbox = slide6.shapes.add_textbox(
+                    text_left, box_top, text_width, metrics_height
+                )
+                tf = value_textbox.text_frame
+                tf.clear()
+                tf.margin_top = Inches(0)
+                tf.margin_bottom = Inches(0)
+                tf.vertical_anchor = MSO_ANCHOR.MIDDLE  # Center content vertically
+                
+                # Big number
+                value_p = tf.paragraphs[0]
+                value_p.text = f"{value:,}"
+                value_p.alignment = PP_ALIGN.LEFT
+                value_p.font.size = Pt(24)
+                value_p.font.bold = True
+                value_p.font.color.rgb = RGBColor(51, 51, 51)  # Dark gray for better readability
+                
+                # Metric name
+                metric_p = tf.add_paragraph()
+                metric_p.text = metric
+                metric_p.alignment = PP_ALIGN.LEFT
+                metric_p.font.size = Pt(11)
+                metric_p.font.color.rgb = RGBColor(102, 102, 102)  # Medium gray
+
+            # Right side - Sentiment analysis
+            if 'Facebook' in data_frames['combined_sources']:
+                fb_sentiment_data = data_frames['combined_sources']['Facebook']
                 company_sentiment = fb_sentiment_data[fb_sentiment_data['Company'] == company_name]
-            else:
-                company_sentiment = fb_sentiment_data
-            
-            # Donut chart
-            sentiment_counts = company_sentiment['Sentiment'].value_counts()
-            donut_data = ChartData()
-            donut_data.categories = ['Positive', 'Neutral', 'Negative']
-            donut_data.add_series('', [
-                sentiment_counts.get(1, 0),
-                sentiment_counts.get(0, 0),
-                sentiment_counts.get(-1, 0)
-            ])
-            
-            # Start right section (80% width) layout
-            right_section_left = Inches(3.7)  # After left 20% section
-            right_width = Inches(9.13)  # ~80% of slide width
-            
-            # Position donut chart in upper left of right section
-            donut_size = Inches(3.5)
-            x = right_section_left
-            y = Inches(1.2)
-            
-            bg_box = add_bg_box(slide6, x, y, donut_size, donut_size - Inches(0.4), color=CHART_BG_COLOR)
-
-            # Position donut chart below title
-            donut = slide6.shapes.add_chart(
-                XL_CHART_TYPE.DOUGHNUT, 
-                x, y, 
-                donut_size, donut_size - Inches(0.4), 
-                donut_data
-            ).chart
-            donut.has_legend = True
-            donut.has_title = False
-            donut.legend.position = XL_LEGEND_POSITION.TOP
-            donut.legend.font.size = Pt(12)
-
-            donut.has_title = True
-            donut.chart_title.text_frame.text = f"{CHARTS_ICONS['Time Distribution']} Postların sentiment bölgüsü"
-            donut.chart_title.text_frame.paragraphs[0].font.size = Pt(14)
-            donut.chart_title.text_frame.paragraphs[0].font.bold = False
-            donut.chart_title.text_frame.paragraphs[0].font.color.rgb = HEADER_TEXT_COLOR  # Red color for title
-            
-            # Set chart background
-            donut.chart_style = 2  # White background
-            
-            # Set colors for donut chart and add data labels with arrows
-            for i, point in enumerate(donut.series[0].points):
-                point.format.fill.solid()
-                point.format.fill.fore_color.rgb = SENTIMENT_COLORS[list(SENTIMENT_COLORS.keys())[i]]
-                # Add data label with arrow
-                point.has_data_label = True
-                point.data_label.font.size = Pt(10)
-                point.data_label.font.bold = True
-                # Calculate percentage for current point
-                values = [
+                
+                # Donut chart
+                sentiment_counts = company_sentiment['Sentiment'].value_counts()
+                donut_data = ChartData()
+                donut_data.categories = ['Positive', 'Neutral', 'Negative']
+                donut_data.add_series('', [
                     sentiment_counts.get(1, 0),
                     sentiment_counts.get(0, 0),
                     sentiment_counts.get(-1, 0)
-                ]
-                total = sum(values)
-                current_value = values[i]
-                percentage = (current_value / total) * 100 if total > 0 else 0
-                # Format label to show both count and percentage
-                point.data_label.text_frame.text = f"{current_value:,} ({percentage:.1f}%)"
-                for paragraph in point.data_label.text_frame.paragraphs:
-                    paragraph.font.size = Pt(8) 
+                ])
+                
+                # Start right section (80% width) layout
+                right_section_left = Inches(3.7)  # After left 20% section
+                right_width = Inches(9.13)  # ~80% of slide width
+                
+                # Position donut chart in upper left of right section
+                donut_size = Inches(3.5)
+                x = right_section_left
+                y = Inches(1.2)
+                
+                bg_box = add_bg_box(slide6, x, y, donut_size, donut_size - Inches(0.4), color=CHART_BG_COLOR)
 
-            # Multiline chart
-            sentiment_by_date = company_sentiment.groupby('Day')['Sentiment'].value_counts().unstack(fill_value=0)
-            chart_data = CategoryChartData()
-            chart_data.categories = sentiment_by_date.index.tolist()
-            
-            for sentiment in [1, 0, -1]:
-                series_name = "Positive" if sentiment == 1 else "Neutral" if sentiment == 0 else "Negative"
-                if sentiment in sentiment_by_date.columns:
-                    chart_data.add_series(series_name, sentiment_by_date[sentiment].tolist())
-            
-            # Position multiline chart to right of donut
-            x = right_section_left + donut_size + Inches(0.3)  # After donut chart
-            y = Inches(1.2)
-            cx = right_width - donut_size - Inches(0.3)  # Remaining width
-            cy = donut_size - Inches(0.4)  # Same height as donut
-            bg_box = add_bg_box(slide6, x, y, cx, cy, color=CHART_BG_COLOR)
+                # Position donut chart below title
+                donut = slide6.shapes.add_chart(
+                    XL_CHART_TYPE.DOUGHNUT, 
+                    x, y, 
+                    donut_size, donut_size - Inches(0.4), 
+                    donut_data
+                ).chart
+                donut.has_legend = True
+                donut.has_title = False
+                donut.legend.position = XL_LEGEND_POSITION.TOP
+                donut.legend.font.size = Pt(12)
 
-            if has_competitors:
+                donut.has_title = True
+                donut.chart_title.text_frame.text = f"{CHARTS_ICONS['Time Distribution']} Postların sentiment bölgüsü"
+                donut.chart_title.text_frame.paragraphs[0].font.size = Pt(14)
+                donut.chart_title.text_frame.paragraphs[0].font.bold = False
+                donut.chart_title.text_frame.paragraphs[0].font.color.rgb = HEADER_TEXT_COLOR  # Red color for title
+                
+                # Set chart background
+                donut.chart_style = 2  # White background
+                
+                # Set colors for donut chart and add data labels with arrows
+                for i, point in enumerate(donut.series[0].points):
+                    point.format.fill.solid()
+                    point.format.fill.fore_color.rgb = SENTIMENT_COLORS[list(SENTIMENT_COLORS.keys())[i]]
+                    # Add data label with arrow
+                    point.has_data_label = True
+                    point.data_label.font.size = Pt(10)
+                    point.data_label.font.bold = True
+                    # Calculate percentage for current point
+                    values = [
+                        sentiment_counts.get(1, 0),
+                        sentiment_counts.get(0, 0),
+                        sentiment_counts.get(-1, 0)
+                    ]
+                    total = sum(values)
+                    current_value = values[i]
+                    percentage = (current_value / total) * 100 if total > 0 else 0
+                    # Format label to show both count and percentage
+                    point.data_label.text_frame.text = f"{current_value:,} ({percentage:.1f}%)"
+                    for paragraph in point.data_label.text_frame.paragraphs:
+                        paragraph.font.size = Pt(8) 
+
+                # Multiline chart
+                sentiment_by_date = company_sentiment.groupby('Day')['Sentiment'].value_counts().unstack(fill_value=0)
+                chart_data = CategoryChartData()
+                chart_data.categories = sentiment_by_date.index.tolist()
+                
+                for sentiment in [1, 0, -1]:
+                    series_name = "Positive" if sentiment == 1 else "Neutral" if sentiment == 0 else "Negative"
+                    if sentiment in sentiment_by_date.columns:
+                        chart_data.add_series(series_name, sentiment_by_date[sentiment].tolist())
+                
+                # Position multiline chart to right of donut
+                x = right_section_left + donut_size + Inches(0.3)  # After donut chart
+                y = Inches(1.2)
+                cx = right_width - donut_size - Inches(0.3)  # Remaining width
+                cy = donut_size - Inches(0.4)  # Same height as donut
+                bg_box = add_bg_box(slide6, x, y, cx, cy, color=CHART_BG_COLOR)
+
                 chart = slide6.shapes.add_chart(XL_CHART_TYPE.LINE, x, y, cx, cy, chart_data).chart
                 chart.has_legend = True
                 chart.legend.position = XL_LEGEND_POSITION.TOP
@@ -1147,15 +1144,14 @@ def create_ppt(data_frames, output_path, start_date, end_date, company_name, com
                 for i, series in enumerate(chart.series):
                     series.format.line.color.rgb = SENTIMENT_COLORS[list(SENTIMENT_COLORS.keys())[i]]
                     series.format.line.width = Pt(2)
-                
-            # Vertical multibar chart
-            x = right_section_left
-            y = Inches(4.5)  # Below upper charts
-            cx = right_width  # Full width of right section
-            cy = Inches(2.5)  # Remaining height
-            bg_box = add_bg_box(slide6, x, y, cx, cy, color=CHART_BG_COLOR)
+                    
+                # Vertical multibar chart
+                x = right_section_left
+                y = Inches(4.5)  # Below upper charts
+                cx = right_width  # Full width of right section
+                cy = Inches(2.5)  # Remaining height
+                bg_box = add_bg_box(slide6, x, y, cx, cy, color=CHART_BG_COLOR)
 
-            if has_competitors:
                 company_sentiments = fb_sentiment_data.groupby('Company')['Sentiment'].value_counts().unstack(fill_value=0)
                 # Sort by total sentiment values
                 totals = company_sentiments.sum(axis=1)
@@ -1178,6 +1174,392 @@ def create_ppt(data_frames, output_path, start_date, end_date, company_name, com
                 # Set chart background and formatting
                 apply_chart_formatting(chart, title="Post saylarına görə bankların bölgüsü")
                 apply_sentiment_colors(chart)
+        else: # no competitiors
+            left = Inches(0.5)
+            header_height = Inches(0.8)
+            top = header_height + Inches(0.2)  # Start below header with small margin
+            metrics_width = Inches(1.8)  # Reduced from 2.2 to 1.5
+            metrics_height = Inches(1.0)
+            slide_height = Inches(7.5)  # Standard slide height
+            available_height = slide_height - header_height - Inches(0.4)  # Bottom margin
+            total_items = len(metrics)
+
+            card_spacing = Inches(0.3)  # Space between cards
+            total_cards_height = metrics_height * total_items
+            total_spacing_height = card_spacing * (total_items - 1)
+            remaining_space = available_height - total_cards_height - total_spacing_height
+            top_margin = remaining_space / 2
+
+            # Left side metrics
+            for i, (metric, value) in enumerate(metrics.items()):
+                box_top = top + top_margin + (metrics_height * i) + (card_spacing * i)
+                
+                # White background card
+                bg_box = add_bg_box(slide6, left, box_top, metrics_width, metrics_height, color=CHART_BG_COLOR)
+
+                # Red icon background (adjusted for new card height)
+                icon_width = Inches(0.5)
+                icon_height = Inches(0.5)
+                icon_left = left + Inches(0.1)
+                icon_top = box_top + (metrics_height - icon_height) / 2  # Centered vertically
+                
+                icon_box = slide6.shapes.add_shape(
+                    MSO_SHAPE.ROUNDED_RECTANGLE,
+                    icon_left, icon_top, icon_width, icon_height
+                )
+                icon_box.fill.solid()
+                icon_box.fill.fore_color.rgb = HEADER_TEXT_COLOR
+                icon_box.line.fill.background()  # Remove border
+                
+                # Icon text (white, centered inside red bg)
+                icon_text = slide6.shapes.add_textbox(
+                    icon_left, icon_top, icon_width, icon_height
+                )
+                icon_frame = icon_text.text_frame
+                icon_frame.clear()
+                icon_frame.margin_top = Inches(0)
+                icon_frame.margin_bottom = Inches(0)
+                icon_frame.vertical_anchor = MSO_ANCHOR.MIDDLE  # Center vertically
+                
+                icon_p = icon_frame.paragraphs[0]
+                icon_p.text = METRIC_ICONS.get(metric, "📊")  # Use specific icon or default
+                icon_p.alignment = PP_ALIGN.CENTER
+                icon_p.font.size = Pt(22)  # Adjusted for smaller icon box
+                icon_p.font.color.rgb = RGBColor(255, 255, 255)
+                
+                # Combined value + metric label, vertically centered inside white bg
+                text_left = icon_left + icon_width + Inches(0.15)
+                text_width = metrics_width - icon_width - Inches(0.25)
+                
+                value_textbox = slide6.shapes.add_textbox(
+                    text_left, box_top, text_width, metrics_height
+                )
+                tf = value_textbox.text_frame
+                tf.clear()
+                tf.margin_top = Inches(0)
+                tf.margin_bottom = Inches(0)
+                tf.vertical_anchor = MSO_ANCHOR.MIDDLE  # Center content vertically
+                
+                # Big number
+                value_p = tf.paragraphs[0]
+                value_p.text = f"{value:,}"
+                value_p.alignment = PP_ALIGN.LEFT
+                value_p.font.size = Pt(24)
+                value_p.font.bold = True
+                value_p.font.color.rgb = RGBColor(51, 51, 51)  # Dark gray for better readability
+                
+                # Metric name
+                metric_p = tf.add_paragraph()
+                metric_p.text = metric
+                metric_p.alignment = PP_ALIGN.LEFT
+                metric_p.font.size = Pt(11)
+                metric_p.font.color.rgb = RGBColor(102, 102, 102)  # Medium gray
+
+            # Middle side - Sentiment analysis
+            if 'Facebook' in data_frames['combined_sources']:
+                fb_sentiment_data = data_frames['combined_sources']['Facebook']
+                company_sentiment = fb_sentiment_data
+                
+                # Donut chart
+                sentiment_counts = company_sentiment['Sentiment'].value_counts()
+                donut_data = ChartData()
+                donut_data.categories = ['Positive', 'Neutral', 'Negative']
+                donut_data.add_series('', [
+                    sentiment_counts.get(1, 0),
+                    sentiment_counts.get(0, 0),
+                    sentiment_counts.get(-1, 0)
+                ])
+                
+                # Start right section with equal margins
+                right_section_left = metrics_width + Inches(0.8)  # After left metrics section
+                right_width = Inches(8.33)
+                
+                # Position donut chart in upper left of right section
+                donut_size = Inches(3.5)
+                x = right_section_left
+                y = Inches(1.2)
+                
+                bg_box = add_bg_box(slide6, x, y, donut_size, donut_size - Inches(0.4), color=CHART_BG_COLOR)
+
+                # Position donut chart below title
+                donut = slide6.shapes.add_chart(
+                    XL_CHART_TYPE.DOUGHNUT, 
+                    x, y, 
+                    donut_size, donut_size - Inches(0.4), 
+                    donut_data
+                ).chart
+                donut.has_legend = True
+                donut.has_title = False
+                donut.legend.position = XL_LEGEND_POSITION.TOP
+                donut.legend.font.size = Pt(12)
+
+                donut.has_title = True
+                donut.chart_title.text_frame.text = f"{CHARTS_ICONS['Time Distribution']} Postların sentiment bölgüsü"
+                donut.chart_title.text_frame.paragraphs[0].font.size = Pt(14)
+                donut.chart_title.text_frame.paragraphs[0].font.bold = False
+                donut.chart_title.text_frame.paragraphs[0].font.color.rgb = HEADER_TEXT_COLOR  # Red color for title
+                
+                # Set chart background
+                donut.chart_style = 2  # White background
+                
+                # Set colors for donut chart and add data labels with arrows
+                for i, point in enumerate(donut.series[0].points):
+                    point.format.fill.solid()
+                    point.format.fill.fore_color.rgb = SENTIMENT_COLORS[list(SENTIMENT_COLORS.keys())[i]]
+                    # Add data label with arrow
+                    point.has_data_label = True
+                    point.data_label.font.size = Pt(10)
+                    point.data_label.font.bold = True
+                    # Calculate percentage for current point
+                    values = [
+                        sentiment_counts.get(1, 0),
+                        sentiment_counts.get(0, 0),
+                        sentiment_counts.get(-1, 0)
+                    ]
+                    total = sum(values)
+                    current_value = values[i]
+                    percentage = (current_value / total) * 100 if total > 0 else 0
+                    # Format label to show both count and percentage
+                    point.data_label.text_frame.text = f"{current_value:,} ({percentage:.1f}%)"
+                    for paragraph in point.data_label.text_frame.paragraphs:
+                        paragraph.font.size = Pt(8)
+
+                # Text section instead of multiline chart
+                x_text = right_section_left + donut_size + Inches(0.3)  # After donut chart
+                y_text = Inches(1.2)
+                cx_text = right_width - donut_size - Inches(0.3)  # Remaining width
+                cy_text = donut_size - Inches(0.4)  # Same height as donut
+                bg_box = add_bg_box(slide6, x_text, y_text, cx_text, cy_text, color=CHART_BG_COLOR)
+
+                # --- TITLE TEXTBOX ---
+                title_left = x_text + Inches(0.2)
+                title_top = y_text + Inches(0.2)
+                title_width = cx_text - Inches(0.4)
+                title_height = Inches(0.6)
+                title_textbox = slide6.shapes.add_textbox(title_left, title_top, title_width, title_height)
+                title_tf = title_textbox.text_frame
+                title_tf.clear()
+                title_tf.word_wrap = True
+
+                title_p = title_tf.paragraphs[0]
+                title_p.clear()
+
+                run_icon = title_p.add_run()
+                run_icon.text = f"{CHARTS_ICONS['Time Distribution']} Facebook postlarının "
+                run_icon.font.size = Pt(16)
+                run_icon.font.bold = True
+                run_icon.font.color.rgb = RGBColor(0, 0, 0)
+
+                run_positive = title_p.add_run()
+                run_positive.text = "pozitiv "
+                run_positive.font.size = Pt(16)
+                run_positive.font.bold = True
+                run_positive.font.color.rgb = RGBColor(40, 167, 69)  # Green
+
+                run_negative = title_p.add_run()
+                run_negative.text = "və "
+                run_negative.font.size = Pt(16)
+                run_negative.font.bold = True
+                run_negative.font.color.rgb = RGBColor(0, 0, 0)
+
+                run_negative = title_p.add_run()
+                run_negative.text = "neqativ "
+                run_negative.font.size = Pt(16)
+                run_negative.font.bold = True
+                run_negative.font.color.rgb = RGBColor(220, 53, 69)  # Red
+
+                run_text = title_p.add_run()
+                run_text.text = "xəbər məzmunları aşağıda qeyd edilmişdir."
+                run_text.font.size = Pt(16)
+                run_text.font.bold = True
+                run_text.font.color.rgb = RGBColor(0, 0, 0)
+
+                title_p.alignment = PP_ALIGN.LEFT
+
+                # --- PARAGRAPH 1 TEXTBOX ---
+                para1_left = x_text + Inches(0.2)
+                para1_top = title_top + title_height + Inches(0.1)
+                para1_width = cx_text - Inches(0.4)
+                para1_height = Inches(1)
+                para1_textbox = slide6.shapes.add_textbox(para1_left, para1_top, para1_width, para1_height)
+                para1_tf = para1_textbox.text_frame
+                para1_tf.clear()
+                para1_tf.word_wrap = True
+
+                para1 = para1_tf.paragraphs[0]
+                para1.level = 0
+                para1.clear()
+
+                run1_1 = para1.add_run()
+                run1_1.text = 'Prezident İlham Əliyev: “Azəri-Çıraq-Günəşli”, “Abşeron” və “Şahdəniz” bir çox ölkələrin enerji təhlükəsizliyinə töhfə verir; "BP"nin qrantları ilə enerji laboratoriyası qurulacaq; Neft-qaz sektoru üzrə büdcə daxilolmaları 5 %-yə yaxın artıb və bu kimi xəbərlər '
+                run1_1.font.size = Pt(12)
+                run1_1.font.bold = False
+                run1_1.font.color.rgb = RGBColor(51, 51, 51)
+
+                run1_2 = para1.add_run()
+                run1_2.text = "pozitiv"
+                run1_2.font.size = Pt(12)
+                run1_2.font.bold = True
+                run1_2.font.color.rgb = RGBColor(40, 167, 69)
+
+                run1_3 = para1.add_run()
+                run1_3.text = " olaraq qeyd edilmişdir."
+                run1_3.font.size = Pt(12)
+                run1_3.font.bold = False
+                run1_3.font.color.rgb = RGBColor(51, 51, 51)
+
+                para1.alignment = PP_ALIGN.LEFT
+
+                # --- PARAGRAPH 2 TEXTBOX ---
+                para2_left = x_text + Inches(0.2)
+                para2_top = para1_top + para1_height + Inches(0.1)
+                para2_width = cx_text - Inches(0.4)
+                para2_height = Inches(1)
+                para2_textbox = slide6.shapes.add_textbox(para2_left, para2_top, para2_width, para2_height)
+                para2_tf = para2_textbox.text_frame
+                para2_tf.clear()
+                para2_tf.word_wrap = True
+
+                para2 = para2_tf.paragraphs[0]
+                para2.level = 0
+                para2.clear()
+
+                run2_1 = para2.add_run()
+                run2_1.text = "Neftin ucuzlaşması səbəbilə ilk 3 ayda şirkətin mənfəəti 49% aşağı düşüb; Can dedik, kardeş dedik Azerbaycan'a şimdi ne oluyor?; Aslında SOCAR ile işbirliği yapan BP'yi sayarsak Tek millet 4 devlet olmuşlar və bu kimi xəbərlər "
+                run2_1.font.size = Pt(12)
+                run2_1.font.bold = False
+                run2_1.font.color.rgb = RGBColor(51, 51, 51)
+
+                run2_2 = para2.add_run()
+                run2_2.text = "neqativ"
+                run2_2.font.size = Pt(12)
+                run2_2.font.bold = True
+                run2_2.font.color.rgb = RGBColor(220, 53, 69)
+
+                run2_3 = para2.add_run()
+                run2_3.text = " olaraq qeyd edilmişdir."
+                run2_3.font.size = Pt(12)
+                run2_3.font.bold = False
+                run2_3.font.color.rgb = RGBColor(51, 51, 51)
+
+                para2.alignment = PP_ALIGN.LEFT
+
+                # Vertical multibar chart grouped by Day
+                x = right_section_left
+                y = Inches(4.5)  # Below upper charts
+                cx = right_width  # Full width of right section
+                cy = Inches(2.5)  # Remaining height
+                bg_box = add_bg_box(slide6, x, y, cx, cy, color=CHART_BG_COLOR)
+
+                # Group data by Day instead of Company
+                sentiment_by_day = fb_sentiment_data.groupby('Day')['Sentiment'].value_counts().unstack(fill_value=0)
+                # Sort by date
+                sentiment_by_day = sentiment_by_day.sort_index()
+
+                chart_data = CategoryChartData()
+                chart_data.categories = sentiment_by_day.index.tolist()
+                
+                for sentiment in [1, 0, -1]:
+                    series_name = "Positive" if sentiment == 1 else "Neutral" if sentiment == 0 else "Negative"
+                    if sentiment in sentiment_by_day.columns:
+                        chart_data.add_series(series_name, sentiment_by_day[sentiment].tolist())
+
+                chart = slide6.shapes.add_chart(XL_CHART_TYPE.COLUMN_CLUSTERED, x, y, cx, cy, chart_data).chart
+                chart.has_legend = True
+                chart.legend.position = XL_LEGEND_POSITION.TOP
+                chart.legend.font.size = Pt(12)
+                chart.has_title = True
+                chart.chart_title.text_frame.text = f"{CHARTS_ICONS['Sentiment Trend']} Postların günlər üzrə bölgüsü"
+                chart.chart_title.text_frame.paragraphs[0].font.size = Pt(14)
+                chart.chart_title.text_frame.paragraphs[0].font.bold = False
+                chart.chart_title.text_frame.paragraphs[0].font.color.rgb = HEADER_TEXT_COLOR
+
+                # Set chart background and formatting
+                apply_chart_formatting(chart, title="Postların günlər üzrə bölgüsü", icon=CHARTS_ICONS['Sentiment Trend'])
+                for i, series in enumerate(chart.series):
+                    series.format.fill.solid()
+                    series.format.fill.fore_color.rgb = SENTIMENT_COLORS[list(SENTIMENT_COLORS.keys())[i]]
+                    series.has_data_labels = True
+                    series.data_labels.font.size = Pt(10)
+                    series.data_labels.font.bold = True
+                    series.data_labels.position = XL_DATA_LABEL_POSITION.OUTSIDE_END
+
+            # right side - Metrics
+            if 'facebook_reachs' in data_frames and len(data_frames['facebook_reachs']) > 0:
+                fb_data = list(data_frames['facebook_reachs'].values())[0]
+                fb_metrics = fb_data
+
+            metrics = {
+                'Post sayı': len(fb_metrics),
+                'Şərh sayı': fb_metrics['comment_count'].sum(),
+                'Bəyənmə sayı': fb_metrics['like_count'].sum(),
+                'Paylaşım sayı': fb_metrics['share_count'].sum(),
+                'Baxış sayı': fb_metrics['view_count'].sum()
+            }
+            for i, (metric, value) in enumerate(metrics.items()):
+                box_top = top + top_margin + (metrics_height * i) + (card_spacing * i)
+                right_metrics_left = left + metrics_width + right_width + Inches(0.6)
+                # White background card
+                bg_box = add_bg_box(slide6, right_metrics_left, box_top, metrics_width, metrics_height, color=CHART_BG_COLOR)
+
+                # Red icon background (adjusted for new card height)
+                icon_width = Inches(0.5)
+                icon_height = Inches(0.5)
+                icon_left = right_metrics_left + Inches(0.1)
+                icon_top = box_top + (metrics_height - icon_height) / 2  # Centered vertically
+                
+                icon_box = slide6.shapes.add_shape(
+                    MSO_SHAPE.ROUNDED_RECTANGLE,
+                    icon_left, icon_top, icon_width, icon_height
+                )
+                icon_box.fill.solid()
+                icon_box.fill.fore_color.rgb = HEADER_TEXT_COLOR
+                icon_box.line.fill.background()  # Remove border
+                
+                # Icon text (white, centered inside red bg)
+                icon_text = slide6.shapes.add_textbox(
+                    icon_left, icon_top, icon_width, icon_height
+                )
+                icon_frame = icon_text.text_frame
+                icon_frame.clear()
+                icon_frame.margin_top = Inches(0)
+                icon_frame.margin_bottom = Inches(0)
+                icon_frame.vertical_anchor = MSO_ANCHOR.MIDDLE  # Center vertically
+                
+                icon_p = icon_frame.paragraphs[0]
+                icon_p.text = METRIC_ICONS.get(metric, "📊")  # Use specific icon or default
+                icon_p.alignment = PP_ALIGN.CENTER
+                icon_p.font.size = Pt(22)  # Adjusted for smaller icon box
+                icon_p.font.color.rgb = RGBColor(255, 255, 255)
+                
+                # Combined value + metric label, vertically centered inside white bg
+                text_left = icon_left + icon_width + Inches(0.15)
+                text_width = metrics_width - icon_width - Inches(0.25)
+                
+                value_textbox = slide6.shapes.add_textbox(
+                    text_left, box_top, text_width, metrics_height
+                )
+                tf = value_textbox.text_frame
+                tf.clear()
+                tf.margin_top = Inches(0)
+                tf.margin_bottom = Inches(0)
+                tf.vertical_anchor = MSO_ANCHOR.MIDDLE  # Center content vertically
+                
+                # Big number
+                value_p = tf.paragraphs[0]
+                value_p.text = f"{value:,}"
+                value_p.alignment = PP_ALIGN.LEFT
+                value_p.font.size = Pt(24)
+                value_p.font.bold = True
+                value_p.font.color.rgb = RGBColor(51, 51, 51)  # Dark gray for better readability
+                
+                # Metric name
+                metric_p = tf.add_paragraph()
+                metric_p.text = metric
+                metric_p.alignment = PP_ALIGN.LEFT
+                metric_p.font.size = Pt(11)
+                metric_p.font.color.rgb = RGBColor(102, 102, 102)  # Medium gray
+
         # endregion
 
         # region Seventh slide - Facebook metrics table Combines sources
