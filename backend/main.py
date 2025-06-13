@@ -51,7 +51,8 @@ async def generate_ppt(
     negative_links: str = Form(None),
     start_date: str = Form(...),
     end_date: str = Form(...),
-    company_name: str = Form(...)
+    company_name: str = Form(...),
+    has_competitors: bool = Form(True)
 ):
     temp_files = []  # Keep track of all temporary files
     try:
@@ -159,7 +160,8 @@ async def generate_ppt(
             positive_links=positive_links_list,
             negative_links=negative_links_list,
             positive_posts=positive_posts,
-            negative_posts=negative_posts
+            negative_posts=negative_posts,
+            has_competitors=has_competitors
         )
 
         # Create a copy of the output file for response

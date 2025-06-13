@@ -6,13 +6,14 @@ function UploadForm() {
     combined_sources: null,
     official_instagram: null,
     official_facebook: null,
-    // keywords: null,
+    facebook_reachs: null,
   });
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
   const [companyName, setCompanyName] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [hasCompetitors, setHasCompetitors] = useState(true);
   const [positiveLinks, setPositiveLinks] = useState([""]);
   const [negativeLinks, setNegativeLinks] = useState([""]);
   const [positivePosts, setPositivePosts] = useState([{ image: null, link: "" }]);
@@ -115,9 +116,13 @@ function UploadForm() {
     setError("");
     setLoading(true);
 
-    const missingFiles = Object.entries(excels)
-      .filter(([_, file]) => !file)
-      .map(([type]) => type);
+    const requiredFiles = hasCompetitors 
+      ? ['combined_sources', 'official_instagram', 'official_facebook']
+      : ['combined_sources', 'official_instagram', 'official_facebook', 'facebook_reachs'];
+
+    const missingFiles = requiredFiles
+      .filter(type => !excels[type])
+      .map(type => type);
 
     if (missingFiles.length > 0) {
       setError(
@@ -191,6 +196,7 @@ function UploadForm() {
       formData.append("start_date", startDate);
       formData.append("end_date", endDate);
       formData.append("company_name", companyName);
+      formData.append("has_competitors", hasCompetitors);
 
       const response = await axios.post(
         "http://localhost:8000/generate-ppt/",
@@ -427,6 +433,32 @@ function UploadForm() {
               style={{ marginTop: "5px" }}
             />
           </div>
+
+          {!hasCompetitors && (
+            <div>
+              <label htmlFor="facebook_reachs">Facebook Reaches</label>
+              <input
+                id="facebook_reachs"
+                type="file"
+                accept=".xlsx"
+                onChange={(e) => handleExcelChange(e.target.files?.[0], "facebook_reachs")}
+                aria-label="Facebook reaches Excel file"
+                style={{ marginTop: "5px" }}
+              />
+            </div>
+          )}
+        </div>
+
+        {/* Has Competitors Toggle */}
+        <div className="section">
+          <label style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <input
+              type="checkbox"
+              checked={hasCompetitors}
+              onChange={(e) => setHasCompetitors(e.target.checked)}
+            />
+            Has Competitors
+          </label>
         </div>
 
         {/* Logos Section */}
