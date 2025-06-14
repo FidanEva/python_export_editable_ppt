@@ -40,6 +40,11 @@ CHARTS_ICONS = {
     'Sentiment Distribution': '📊',
     "Time Distribution": '🕒',
 }
+def format_number_with_k(value):
+    """Format number with k for thousands"""
+    if value >= 1000:
+        return f"{value/1000:.1f}k".replace(".0k", "k")
+    return f"{value:,}"
 
 def format_chart_axes(chart, category_font_size=6, value_font_size=6, rotation_angle=-45):
     """Helper function to consistently format chart axes"""
@@ -1030,7 +1035,7 @@ def create_ppt(data_frames, output_path, start_date, end_date, company_name, com
                 
                 # Big number
                 value_p = tf.paragraphs[0]
-                value_p.text = f"{value:,}"
+                value_p.text = format_number_with_k(value)
                 value_p.alignment = PP_ALIGN.LEFT
                 value_p.font.size = Pt(24)
                 value_p.font.bold = True
@@ -1242,7 +1247,7 @@ def create_ppt(data_frames, output_path, start_date, end_date, company_name, com
                 
                 # Big number
                 value_p = tf.paragraphs[0]
-                value_p.text = f"{value:,}"
+                value_p.text = format_number_with_k(value)
                 value_p.alignment = PP_ALIGN.LEFT
                 value_p.font.size = Pt(24)
                 value_p.font.bold = True
@@ -1547,7 +1552,7 @@ def create_ppt(data_frames, output_path, start_date, end_date, company_name, com
                 
                 # Big number
                 value_p = tf.paragraphs[0]
-                value_p.text = f"{value:,}"
+                value_p.text = format_number_with_k(value)
                 value_p.alignment = PP_ALIGN.LEFT
                 value_p.font.size = Pt(24)
                 value_p.font.bold = True
@@ -1855,7 +1860,7 @@ def create_ppt(data_frames, output_path, start_date, end_date, company_name, com
             
             # Big number
             value_p = tf.paragraphs[0]
-            value_p.text = f"{value:,}"
+            value_p.text = format_number_with_k(value)
             value_p.alignment = PP_ALIGN.LEFT
             value_p.font.size = Pt(24)  # Adjusted for smaller cards
             value_p.font.bold = True
