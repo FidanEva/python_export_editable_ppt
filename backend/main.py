@@ -19,7 +19,7 @@ app = FastAPI()
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"],  # React dev server
+    allow_origins=["http://84.247.182.56:3000"],  # React frontend server
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -186,3 +186,8 @@ async def generate_ppt(
         logger.error(f"Error generating PowerPoint: {str(e)}")
         logger.error(traceback.format_exc())
         raise HTTPException(status_code=500, detail=str(e))
+
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run("main:app", host="0.0.0.0", port=8044, reload=True)

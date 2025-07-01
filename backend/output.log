@@ -1,0 +1,20 @@
+nohup: ignoring input
+INFO:     Will watch for changes in these directories: ['/home/python_export_editable_ppt/backend']
+INFO:     Uvicorn running on http://127.0.0.1:8000 (Press CTRL+C to quit)
+INFO:     Started reloader process [2909] using WatchFiles
+INFO:     Started server process [2911]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [2911]
+WARNING:  WatchFiles detected changes in 'main.py'. Reloading...
+INFO:     Started server process [3052]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [3052]
+INFO:     Stopping reloader process [2909]
