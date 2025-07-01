@@ -284,12 +284,13 @@ def create_sentiment_donut_chart(slide, x, y, cx, cy, sentiment_counts, title = 
     for i, point in enumerate(donut.series[0].points):
         current_value = values[i]
     
+        point.format.fill.solid()
+        point.format.fill.fore_color.rgb = SENTIMENT_COLORS[list(SENTIMENT_COLORS.keys())[i]]
+
         if current_value == 0:
             point.has_data_label = False
             continue
 
-        point.format.fill.solid()
-        point.format.fill.fore_color.rgb = SENTIMENT_COLORS[list(SENTIMENT_COLORS.keys())[i]]
         point.has_data_label = True
         point.data_label.font.bold = True
         
@@ -830,7 +831,7 @@ def create_ppt(data_frames, output_path, start_date, end_date, company_name, com
         else:
             # Group by Author for all companies
             author_data = combined_data.groupby('Author').size().sort_values(ascending=True)
-
+        author_data = author_data.tail(20)
         # Ensure we have data to prevent errors
         if len(author_data) == 0:
             logger.warning("No author data found for chart")
@@ -1149,85 +1150,101 @@ def create_ppt(data_frames, output_path, start_date, end_date, company_name, com
                 apply_sentiment_colors(chart)
         else: # no competitiors
             left = Inches(0.5)
+
             header_height = Inches(0.8)
-            top = header_height + Inches(0.2)  # Start below header with small margin
             metrics_width = Inches(1.8)  # Reduced from 2.2 to 1.5
-            metrics_height = Inches(1.0)
-            slide_height = Inches(7.5)  # Standard slide height
-            available_height = slide_height - header_height - Inches(0.4)  # Bottom margin
+            metrics_height = Inches(0.85)  # Reduced from 1.0
             total_items = len(metrics)
 
-            card_spacing = Inches(0.3)  # Space between cards
+            # Calculate updated layout with new height
+            card_spacing = Inches(0.3)
             total_cards_height = metrics_height * total_items
             total_spacing_height = card_spacing * (total_items - 1)
-            remaining_space = available_height - total_cards_height - total_spacing_height
-            top_margin = remaining_space / 2
+            card_section_height = total_cards_height + total_spacing_height
 
-            # Left side metrics
+            # Maintain cards at bottom by anchoring them to bottom of available area
+            top = header_height + Inches(0.2)
+            slide_height = Inches(7.5)
+            available_height = slide_height - header_height - Inches(0.4)
+            top_margin = available_height - card_section_height  # Pushed down to keep bottom position
+
+            # Add top description card
+            text_card_height = Inches(0.6)
+            text_card_top = top + top_margin - text_card_height - Inches(0.15)  # A bit above the metrics section
+            text_card = add_bg_box(slide6, left, text_card_top, metrics_width, text_card_height, color=CHART_BG_COLOR)
+
+            text_box = slide6.shapes.add_textbox(left, text_card_top, metrics_width, text_card_height)
+            text_frame = text_box.text_frame
+            text_frame.clear()
+            text_frame.margin_top = Inches(0)
+            text_frame.margin_bottom = Inches(0)
+            text_frame.vertical_anchor = MSO_ANCHOR.MIDDLE
+
+            para = text_frame.paragraphs[0]
+            para.text = "📌 Rəsmi səhifənin analizi"
+            para.word_wrap = True
+            para.alignment = PP_ALIGN.CENTER
+            para.font.size = Pt(13)
+            para.font.bold = True
+            para.font.color.rgb = HEADER_TEXT_COLOR
+
+            # Now render each metric card (at bottom)
             for i, (metric, value) in enumerate(metrics.items()):
                 box_top = top + top_margin + (metrics_height * i) + (card_spacing * i)
-                
-                # White background card
+
+                # --- white bg box ---
                 bg_box = add_bg_box(slide6, left, box_top, metrics_width, metrics_height, color=CHART_BG_COLOR)
 
-                # Red icon background (adjusted for new card height)
+                # --- red icon box ---
                 icon_width = Inches(0.5)
                 icon_height = Inches(0.5)
                 icon_left = left + Inches(0.1)
-                icon_top = box_top + (metrics_height - icon_height) / 2  # Centered vertically
-                
+                icon_top = box_top + (metrics_height - icon_height) / 2
+
                 icon_box = slide6.shapes.add_shape(
-                    MSO_SHAPE.ROUNDED_RECTANGLE,
-                    icon_left, icon_top, icon_width, icon_height
+                    MSO_SHAPE.ROUNDED_RECTANGLE, icon_left, icon_top, icon_width, icon_height
                 )
                 icon_box.fill.solid()
                 icon_box.fill.fore_color.rgb = HEADER_TEXT_COLOR
-                icon_box.line.fill.background()  # Remove border
-                
-                # Icon text (white, centered inside red bg)
-                icon_text = slide6.shapes.add_textbox(
-                    icon_left, icon_top, icon_width, icon_height
-                )
+                icon_box.line.fill.background()
+
+                icon_text = slide6.shapes.add_textbox(icon_left, icon_top, icon_width, icon_height)
                 icon_frame = icon_text.text_frame
                 icon_frame.clear()
                 icon_frame.margin_top = Inches(0)
                 icon_frame.margin_bottom = Inches(0)
-                icon_frame.vertical_anchor = MSO_ANCHOR.MIDDLE  # Center vertically
-                
+                icon_frame.vertical_anchor = MSO_ANCHOR.MIDDLE
+
                 icon_p = icon_frame.paragraphs[0]
-                icon_p.text = METRIC_ICONS.get(metric, "📊")  # Use specific icon or default
+                icon_p.text = METRIC_ICONS.get(metric, "📊")
                 icon_p.alignment = PP_ALIGN.CENTER
-                icon_p.font.size = Pt(22)  # Adjusted for smaller icon box
+                icon_p.font.size = Pt(22)
                 icon_p.font.color.rgb = RGBColor(255, 255, 255)
-                
-                # Combined value + metric label, vertically centered inside white bg
+
+                # --- value + metric text ---
                 text_left = icon_left + icon_width + Inches(0.15)
                 text_width = metrics_width - icon_width - Inches(0.25)
-                
-                value_textbox = slide6.shapes.add_textbox(
-                    text_left, box_top, text_width, metrics_height
-                )
+
+                value_textbox = slide6.shapes.add_textbox(text_left, box_top, text_width, metrics_height)
                 tf = value_textbox.text_frame
                 tf.clear()
                 tf.margin_top = Inches(0)
                 tf.margin_bottom = Inches(0)
-                tf.vertical_anchor = MSO_ANCHOR.MIDDLE  # Center content vertically
-                
-                # Big number
+                tf.vertical_anchor = MSO_ANCHOR.MIDDLE
+
                 value_p = tf.paragraphs[0]
                 value_p.text = format_number_with_k(value)
                 value_p.alignment = PP_ALIGN.LEFT
                 value_p.font.size = Pt(24)
                 value_p.font.bold = True
-                value_p.font.color.rgb = RGBColor(51, 51, 51)  # Dark gray for better readability
-                
-                # Metric name
+                value_p.font.color.rgb = RGBColor(51, 51, 51)
+
                 metric_p = tf.add_paragraph()
                 metric_p.text = metric
                 metric_p.alignment = PP_ALIGN.LEFT
                 metric_p.font.size = Pt(11)
-                metric_p.font.color.rgb = RGBColor(102, 102, 102)  # Medium gray
-
+                metric_p.font.color.rgb = RGBColor(102, 102, 102)
+                
             # Middle side - Sentiment analysis
             if 'Facebook' in data_frames['combined_sources']:
                 fb_sentiment_data = data_frames['combined_sources']['Facebook']
@@ -1426,9 +1443,30 @@ def create_ppt(data_frames, output_path, start_date, end_date, company_name, com
                 'Paylaşım sayı': fb_metrics['share_count'].sum(),
                 'Baxış sayı': fb_metrics['view_count'].sum()
             }
+
+            # Add top description card
+            text_card_height = Inches(0.6)
+            right_metrics_left = left + metrics_width + right_width + Inches(0.6)
+            text_card_top = top + top_margin - text_card_height - Inches(0.15)  # A bit above the metrics section
+            text_card = add_bg_box(slide6, right_metrics_left, text_card_top, metrics_width, text_card_height, color=CHART_BG_COLOR)
+
+            text_box = slide6.shapes.add_textbox(right_metrics_left, text_card_top, metrics_width, text_card_height)
+            text_frame = text_box.text_frame
+            text_frame.clear()
+            text_frame.margin_top = Inches(0)
+            text_frame.margin_bottom = Inches(0)
+            text_frame.vertical_anchor = MSO_ANCHOR.MIDDLE
+
+            para = text_frame.paragraphs[0]
+            para.text = "📌 Açar sözlü postlar"
+            para.word_wrap = True
+            para.alignment = PP_ALIGN.CENTER
+            para.font.size = Pt(13)
+            para.font.bold = True
+            para.font.color.rgb = HEADER_TEXT_COLOR
+
             for i, (metric, value) in enumerate(metrics.items()):
                 box_top = top + top_margin + (metrics_height * i) + (card_spacing * i)
-                right_metrics_left = left + metrics_width + right_width + Inches(0.6)
                 # White background card
                 bg_box = add_bg_box(slide6, right_metrics_left, box_top, metrics_width, metrics_height, color=CHART_BG_COLOR)
 
@@ -1808,7 +1846,6 @@ def create_ppt(data_frames, output_path, start_date, end_date, company_name, com
             
             sentiment_counts = company_sentiment['Sentiment'].value_counts()
 
-            
             # Right section (80% width) layout
             right_section_left = Inches(3.7)  # After left 20% section
             right_width = Inches(9.13)  # 80% of slide width
@@ -1819,7 +1856,7 @@ def create_ppt(data_frames, output_path, start_date, end_date, company_name, com
                 x = right_section_left
                 y = Inches(1.2)
 
-                create_sentiment_donut_chart(slide9, x, y, donut_size, donut_size - Inches(0.4), sentiment_counts)
+                create_sentiment_donut_chart(slide9, x, y, donut_size + Inches(0.3), donut_size - Inches(0.4), sentiment_counts)
 
                 # Multiline chart
                 x = right_section_left + donut_size + Inches(0.5)  # After donut chart
@@ -1868,14 +1905,13 @@ def create_ppt(data_frames, output_path, start_date, end_date, company_name, com
                 apply_sentiment_colors(chart)
                 apply_chart_formatting(chart, title="Post saylarına görə bankların bölgüsü")
 
-            
             else:
                 # Position smaller donut chart centered in its section
                 donut_size = Inches(3.5)
                 x = right_section_left + right_width - donut_size - Inches(0.3)  # Centered in right section
                 y = Inches(1.2)
 
-                create_sentiment_donut_chart(slide9, x, y, donut_size, donut_size - Inches(0.4), sentiment_counts)
+                create_sentiment_donut_chart(slide9, x, y, donut_size + Inches(0.3), donut_size - Inches(0.4), sentiment_counts)
                                                         
                 # Info section with separated text boxes
                 x = right_section_left
