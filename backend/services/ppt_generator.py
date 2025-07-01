@@ -226,6 +226,83 @@ def add_bg_box(slide, left, top, width, height, color=RGBColor(255, 255, 255)):
     bg_box.adjustments[0] = 0.01  # Adjust roundness if needed
     return bg_box
 
+def create_sentiment_line_chart(slide, x, y, cx, cy, chart_data, title, icon=CHARTS_ICONS['Sentiment Trend']):
+    """Helper function to create a sentiment line chart."""
+    
+    add_bg_box(slide, x, y, cx, cy, color=CHART_BG_COLOR)
+
+    chart = slide.shapes.add_chart(
+        XL_CHART_TYPE.LINE, x, y, cx, cy, chart_data
+    ).chart
+
+    chart.has_legend = True
+    chart.legend.position = XL_LEGEND_POSITION.TOP
+    chart.legend.font.size = Pt(12)
+
+    apply_chart_formatting(chart, title=title, icon=icon)
+    
+    for i, series in enumerate(chart.series):
+        series.format.line.color.rgb = SENTIMENT_COLORS[list(SENTIMENT_COLORS.keys())[i]]
+        series.format.line.width = Pt(2)
+        
+    return chart
+
+def create_sentiment_donut_chart(slide, x, y, cx, cy, sentiment_counts, title = f"{CHARTS_ICONS['Time Distribution']} Bank postlarının sentiment bölgüsü"):
+    """Helper function to create a sentiment donut chart."""
+    
+    add_bg_box(slide, x, y, cx, cy, color=CHART_BG_COLOR)
+
+    donut_data = ChartData()
+    donut_data.categories = ['Positive', 'Neutral', 'Negative']
+    
+    values = [
+        int(sentiment_counts.get(1, 0)),
+        int(sentiment_counts.get(0, 0)),
+        int(sentiment_counts.get(-1, 0))
+    ]
+    
+    donut_data.add_series('', values)
+
+    donut = slide.shapes.add_chart(
+        XL_CHART_TYPE.DOUGHNUT, x, y, cx, cy, donut_data
+    ).chart
+
+    donut.has_legend = True
+    donut.legend.position = XL_LEGEND_POSITION.TOP
+    donut.legend.font.size = Pt(12)
+
+    donut.has_title = True
+    donut.chart_title.text_frame.text = title
+    donut.chart_title.text_frame.paragraphs[0].font.size = Pt(14)
+    donut.chart_title.text_frame.paragraphs[0].font.bold = False
+    donut.chart_title.text_frame.paragraphs[0].font.color.rgb = HEADER_TEXT_COLOR
+
+    donut.chart_style = 2  # White background
+
+    total = sum(values)
+
+    for i, point in enumerate(donut.series[0].points):
+        current_value = values[i]
+    
+        if current_value == 0:
+            point.has_data_label = False
+            continue
+
+        point.format.fill.solid()
+        point.format.fill.fore_color.rgb = SENTIMENT_COLORS[list(SENTIMENT_COLORS.keys())[i]]
+        point.has_data_label = True
+        point.data_label.font.bold = True
+        
+        current_value = values[i]
+        percentage = (current_value / total) * 100 if total > 0 else 0
+        point.data_label.text_frame.text = f"{current_value:,} ({percentage:.1f}%)"
+
+        for paragraph in point.data_label.text_frame.paragraphs:
+            for run in paragraph.runs:
+                run.font.size = Pt(12)
+    
+    return donut
+
 def create_ppt(data_frames, output_path, start_date, end_date, company_name, company_logo_path, mediaeye_logo_path, neurotime_logo_path, competitor_logo_paths=None, positive_links=None, negative_links=None, positive_posts=None, negative_posts=None, has_competitors=True):
     try:
         logger.debug("Creating PowerPoint presentation")
@@ -601,65 +678,13 @@ def create_ppt(data_frames, output_path, start_date, end_date, company_name, com
         left, top = multiline_chart_x, bottom_row_y
         x, y, cx, cy = left, top, multiline_chart_width, bottom_section_height
 
-        # White background card
-        bg_box = add_bg_box(slide3, x, y, cx, cy, color=CHART_BG_COLOR)
-
-        chart = slide3.shapes.add_chart(XL_CHART_TYPE.LINE, x, y, cx, cy, chart_data).chart
-        chart.has_legend = True
-        chart.legend.position = XL_LEGEND_POSITION.TOP
-        chart.legend.font.size = Pt(12)
-
-        # Set chart background and formatting
-        apply_chart_formatting(chart, title="Xəbərlərin sentiment və zamana görə bölgüsü", icon=CHARTS_ICONS['Sentiment Trend'])
-        for i, series in enumerate(chart.series):
-            series.format.line.color.rgb = SENTIMENT_COLORS[list(SENTIMENT_COLORS.keys())[i]]
-            series.format.line.width = Pt(2)
+        create_sentiment_line_chart(slide3, x, y, cx, cy, chart_data, title="Xəbərlərin sentiment və zamana görə bölgüsü")
 
         # Create donut chart (bottom right) - narrower and centered
         logger.debug("Creating donut chart")
-        donut_data = ChartData()
-        donut_data.categories = ['Positive', 'Neutral', 'Negative']
-        donut_data.add_series('', [  # Empty series name to remove text
-            sentiment_counts.get(1, 0),
-            sentiment_counts.get(0, 0),
-            sentiment_counts.get(-1, 0)
-        ])
-
         left, top = donut_chart_x, bottom_row_y
         x, y, cx, cy = left, top, donut_chart_width, bottom_section_height
-        bg_box = add_bg_box(slide3, x, y, cx, cy, color=CHART_BG_COLOR)
-
-        donut = slide3.shapes.add_chart(XL_CHART_TYPE.DOUGHNUT, x, y, cx, cy, donut_data).chart
-        donut.has_legend = True
-        donut.legend.position = XL_LEGEND_POSITION.TOP
-        donut.legend.font.size = Pt(12)
-
-        donut.has_title = True
-        donut.chart_title.text_frame.text = f"{CHARTS_ICONS['Time Distribution']} Bank postlarının sentiment bölgüsü"
-        donut.chart_title.text_frame.paragraphs[0].font.size = Pt(14)
-        donut.chart_title.text_frame.paragraphs[0].font.bold = False
-        donut.chart_title.text_frame.paragraphs[0].font.color.rgb = HEADER_TEXT_COLOR  # Red color for title
-
-        # Set chart background
-        donut.chart_style = 2  # White background
-
-        # Set colors for donut chart and add data labels with arrows
-        for i, point in enumerate(donut.series[0].points):
-            point.format.fill.solid()
-            point.format.fill.fore_color.rgb = SENTIMENT_COLORS[list(SENTIMENT_COLORS.keys())[i]]
-            # Add data label with arrow
-            point.has_data_label = True
-            point.data_label.font.size = Pt(10)
-            point.data_label.font.bold = True
-            # Calculate percentage for current point
-            values = [sentiment_counts.get(1, 0), sentiment_counts.get(0, 0), sentiment_counts.get(-1, 0)]
-            total = sum(values)
-            current_value = values[i]
-            percentage = (current_value / total) * 100 if total > 0 else 0
-            # Format label to show both count and percentage
-            point.data_label.text_frame.text = f"{current_value:,} ({percentage:.1f}%)"
-            for paragraph in point.data_label.text_frame.paragraphs:
-                paragraph.font.size = Pt(8)
+        create_sentiment_donut_chart(slide3, x, y, cx, cy, sentiment_counts)
         # endregion
 
         # region Fourth slide - Vertical multibar chart
@@ -1072,50 +1097,7 @@ def create_ppt(data_frames, output_path, start_date, end_date, company_name, com
                 x = right_section_left
                 y = Inches(1.2)
                 
-                bg_box = add_bg_box(slide6, x, y, donut_size, donut_size - Inches(0.4), color=CHART_BG_COLOR)
-
-                # Position donut chart below title
-                donut = slide6.shapes.add_chart(
-                    XL_CHART_TYPE.DOUGHNUT, 
-                    x, y, 
-                    donut_size, donut_size - Inches(0.4), 
-                    donut_data
-                ).chart
-                donut.has_legend = True
-                donut.has_title = False
-                donut.legend.position = XL_LEGEND_POSITION.TOP
-                donut.legend.font.size = Pt(12)
-
-                donut.has_title = True
-                donut.chart_title.text_frame.text = f"{CHARTS_ICONS['Time Distribution']} Postların sentiment bölgüsü"
-                donut.chart_title.text_frame.paragraphs[0].font.size = Pt(14)
-                donut.chart_title.text_frame.paragraphs[0].font.bold = False
-                donut.chart_title.text_frame.paragraphs[0].font.color.rgb = HEADER_TEXT_COLOR  # Red color for title
-                
-                # Set chart background
-                donut.chart_style = 2  # White background
-                
-                # Set colors for donut chart and add data labels with arrows
-                for i, point in enumerate(donut.series[0].points):
-                    point.format.fill.solid()
-                    point.format.fill.fore_color.rgb = SENTIMENT_COLORS[list(SENTIMENT_COLORS.keys())[i]]
-                    # Add data label with arrow
-                    point.has_data_label = True
-                    point.data_label.font.size = Pt(10)
-                    point.data_label.font.bold = True
-                    # Calculate percentage for current point
-                    values = [
-                        sentiment_counts.get(1, 0),
-                        sentiment_counts.get(0, 0),
-                        sentiment_counts.get(-1, 0)
-                    ]
-                    total = sum(values)
-                    current_value = values[i]
-                    percentage = (current_value / total) * 100 if total > 0 else 0
-                    # Format label to show both count and percentage
-                    point.data_label.text_frame.text = f"{current_value:,} ({percentage:.1f}%)"
-                    for paragraph in point.data_label.text_frame.paragraphs:
-                        paragraph.font.size = Pt(8) 
+                create_sentiment_donut_chart(slide6, x, y, donut_size, donut_size - Inches(0.4), sentiment_counts)
 
                 # Multiline chart
                 sentiment_by_date = company_sentiment.groupby('Day')['Sentiment'].value_counts().unstack(fill_value=0)
@@ -1132,23 +1114,9 @@ def create_ppt(data_frames, output_path, start_date, end_date, company_name, com
                 y = Inches(1.2)
                 cx = right_width - donut_size - Inches(0.3)  # Remaining width
                 cy = donut_size - Inches(0.4)  # Same height as donut
-                bg_box = add_bg_box(slide6, x, y, cx, cy, color=CHART_BG_COLOR)
-
-                chart = slide6.shapes.add_chart(XL_CHART_TYPE.LINE, x, y, cx, cy, chart_data).chart
-                chart.has_legend = True
-                chart.legend.position = XL_LEGEND_POSITION.TOP
-                chart.legend.font.size = Pt(12)
-                chart.has_title = True
-                chart.chart_title.text_frame.text = f"{CHARTS_ICONS['Sentiment Trend']} Postların zamana və sentimentə görə bölgüsü"
-                paragraph = chart.chart_title.text_frame.paragraphs[0]
-                paragraph.font.size = Pt(14)
-                paragraph.font.bold = True
-                paragraph.font.color.rgb = HEADER_TEXT_COLOR
-                # Set chart background and formatting
-                apply_chart_formatting(chart, title="Postların zamana və sentimentə görə bölgüsü", icon=CHARTS_ICONS['Sentiment Trend'])
-                for i, series in enumerate(chart.series):
-                    series.format.line.color.rgb = SENTIMENT_COLORS[list(SENTIMENT_COLORS.keys())[i]]
-                    series.format.line.width = Pt(2)
+                
+                title = "Postların zamana və sentimentə görə bölgüsü"
+                create_sentiment_line_chart(slide6, x, y, cx, cy, chart_data, title)
                     
                 # Vertical multibar chart
                 x = right_section_left
@@ -1284,50 +1252,7 @@ def create_ppt(data_frames, output_path, start_date, end_date, company_name, com
                 x = right_section_left
                 y = Inches(1.2)
                 
-                bg_box = add_bg_box(slide6, x, y, donut_size, donut_size - Inches(0.4), color=CHART_BG_COLOR)
-
-                # Position donut chart below title
-                donut = slide6.shapes.add_chart(
-                    XL_CHART_TYPE.DOUGHNUT, 
-                    x, y, 
-                    donut_size, donut_size - Inches(0.4), 
-                    donut_data
-                ).chart
-                donut.has_legend = True
-                donut.has_title = False
-                donut.legend.position = XL_LEGEND_POSITION.TOP
-                donut.legend.font.size = Pt(12)
-
-                donut.has_title = True
-                donut.chart_title.text_frame.text = f"{CHARTS_ICONS['Time Distribution']} Postların sentiment bölgüsü"
-                donut.chart_title.text_frame.paragraphs[0].font.size = Pt(14)
-                donut.chart_title.text_frame.paragraphs[0].font.bold = False
-                donut.chart_title.text_frame.paragraphs[0].font.color.rgb = HEADER_TEXT_COLOR  # Red color for title
-                
-                # Set chart background
-                donut.chart_style = 2  # White background
-                
-                # Set colors for donut chart and add data labels with arrows
-                for i, point in enumerate(donut.series[0].points):
-                    point.format.fill.solid()
-                    point.format.fill.fore_color.rgb = SENTIMENT_COLORS[list(SENTIMENT_COLORS.keys())[i]]
-                    # Add data label with arrow
-                    point.has_data_label = True
-                    point.data_label.font.size = Pt(10)
-                    point.data_label.font.bold = True
-                    # Calculate percentage for current point
-                    values = [
-                        sentiment_counts.get(1, 0),
-                        sentiment_counts.get(0, 0),
-                        sentiment_counts.get(-1, 0)
-                    ]
-                    total = sum(values)
-                    current_value = values[i]
-                    percentage = (current_value / total) * 100 if total > 0 else 0
-                    # Format label to show both count and percentage
-                    point.data_label.text_frame.text = f"{current_value:,} ({percentage:.1f}%)"
-                    for paragraph in point.data_label.text_frame.paragraphs:
-                        paragraph.font.size = Pt(8)
+                create_sentiment_donut_chart(slide6, x, y, donut_size, donut_size - Inches(0.4), sentiment_counts)
 
                 # Text section instead of multiline chart
                 x_text = right_section_left + donut_size + Inches(0.3)  # After donut chart
@@ -1881,15 +1806,8 @@ def create_ppt(data_frames, output_path, start_date, end_date, company_name, com
             else:
                 company_sentiment = insta_sentiment_data
             
-            # Donut chart
             sentiment_counts = company_sentiment['Sentiment'].value_counts()
-            donut_data = ChartData()
-            donut_data.categories = ['Positive', 'Neutral', 'Negative']
-            donut_data.add_series('', [  # Empty series name to remove text
-                sentiment_counts.get(1, 0),
-                sentiment_counts.get(0, 0),
-                sentiment_counts.get(-1, 0)
-            ])
+
             
             # Right section (80% width) layout
             right_section_left = Inches(3.7)  # After left 20% section
@@ -1901,77 +1819,24 @@ def create_ppt(data_frames, output_path, start_date, end_date, company_name, com
                 x = right_section_left
                 y = Inches(1.2)
 
-                bg_box = add_bg_box(slide9, x, y, donut_size, donut_size - Inches(0.4), color=CHART_BG_COLOR)
-                # Position donut chart below title
-                donut = slide9.shapes.add_chart(
-                    XL_CHART_TYPE.DOUGHNUT, 
-                    x, y, 
-                    donut_size, donut_size - Inches(0.4), 
-                    donut_data
-                ).chart
-                donut.has_legend = True
-                donut.legend.position = XL_LEGEND_POSITION.TOP
-                donut.legend.font.size = Pt(12)
-                
-                donut.has_title = True
-                donut.chart_title.text_frame.text = f"{CHARTS_ICONS['Time Distribution']} Postların sentiment bölgüsü"
-                donut.chart_title.text_frame.paragraphs[0].font.size = Pt(14)
-                donut.chart_title.text_frame.paragraphs[0].font.bold = False
-                donut.chart_title.text_frame.paragraphs[0].font.color.rgb = HEADER_TEXT_COLOR  # Red color for title
-                
-                # Set chart background
-                donut.chart_style = 2  # White background
-                
-                for i, point in enumerate(donut.series[0].points):
-                    point.format.fill.solid()
-                    point.format.fill.fore_color.rgb = SENTIMENT_COLORS[list(SENTIMENT_COLORS.keys())[i]]
-                    # Add data label with arrow
-                    point.has_data_label = True
-                    point.data_label.font.size = Pt(10)
-                    point.data_label.font.bold = True
-                    # Calculate percentage for current point
-                    values = [sentiment_counts.get(1, 0), sentiment_counts.get(0, 0), sentiment_counts.get(-1, 0)]
-                    total = sum(values)
-                    current_value = values[i]
-                    percentage = (current_value / total) * 100 if total > 0 else 0
-                    # Format label to show both count and percentage
-                    point.data_label.text_frame.text = f"{current_value:,} ({percentage:.1f}%)"
-                    for paragraph in point.data_label.text_frame.paragraphs:
-                        paragraph.font.size = Pt(8)
-                                        
+                create_sentiment_donut_chart(slide9, x, y, donut_size, donut_size - Inches(0.4), sentiment_counts)
+
                 # Multiline chart
                 x = right_section_left + donut_size + Inches(0.5)  # After donut chart
                 y = Inches(1.2)
                 cx = right_width - donut_size - Inches(0.5)  # Remaining width
                 cy = donut_size - Inches(0.4)  # Same height as donut
-                bg_box = add_bg_box(slide9, x, y, cx, cy, color=CHART_BG_COLOR)
-
                 sentiment_by_date = company_sentiment.groupby('Day')['Sentiment'].value_counts().unstack(fill_value=0)
                 chart_data = CategoryChartData()
                 chart_data.categories = sentiment_by_date.index.tolist()
-                
                 for sentiment in [1, 0, -1]:
                     series_name = "Positive" if sentiment == 1 else "Neutral" if sentiment == 0 else "Negative"
                     if sentiment in sentiment_by_date.columns:
                         chart_data.add_series(series_name, sentiment_by_date[sentiment].tolist())
                 
-                chart = slide9.shapes.add_chart(XL_CHART_TYPE.LINE, x, y, cx, cy, chart_data).chart
-                chart.has_legend = True
-                chart.legend.position = XL_LEGEND_POSITION.TOP
-                chart.legend.font.size = Pt(12)
-                chart.has_title = True
-
-                chart.chart_title.text_frame.text = f"{CHARTS_ICONS['Sentiment Trend']}  Postların zamana və sentimentə görə bölgüsü"
-                paragraph = chart.chart_title.text_frame.paragraphs[0]
-                paragraph.font.size = Pt(14)
-                paragraph.font.bold = True
-                paragraph.font.color.rgb = HEADER_TEXT_COLOR
-                # Set chart background and formatting
-                apply_chart_formatting(chart, title="Postların zamana və sentimentə görə bölgüsü")
-                for i, series in enumerate(chart.series):
-                    series.format.line.color.rgb = SENTIMENT_COLORS[list(SENTIMENT_COLORS.keys())[i]]
-                    series.format.line.width = Pt(2)
-                
+                title = "Postların zamana və sentimentə görə bölgüsü"
+                create_sentiment_line_chart(slide9, x, y, cx, cy, chart_data, title, icon=CHARTS_ICONS['Sentiment Trend'])
+                    
                 # Vertical multibar chart for Instagram company sentiment comparison
                 # Position multibar chart to take full width of right section
                 x = right_section_left
@@ -2010,43 +1875,7 @@ def create_ppt(data_frames, output_path, start_date, end_date, company_name, com
                 x = right_section_left + right_width - donut_size - Inches(0.3)  # Centered in right section
                 y = Inches(1.2)
 
-                bg_box = add_bg_box(slide9, x, y, donut_size, donut_size - Inches(0.4), color=CHART_BG_COLOR)
-                # Position donut chart below title
-                donut = slide9.shapes.add_chart(
-                    XL_CHART_TYPE.DOUGHNUT, 
-                    x, y, 
-                    donut_size, donut_size - Inches(0.4), 
-                    donut_data
-                ).chart
-                donut.has_legend = True
-                donut.legend.position = XL_LEGEND_POSITION.TOP
-                donut.legend.font.size = Pt(12)
-                
-                donut.has_title = True
-                donut.chart_title.text_frame.text = f"{CHARTS_ICONS['Time Distribution']} Postların sentiment bölgüsü"
-                donut.chart_title.text_frame.paragraphs[0].font.size = Pt(14)
-                donut.chart_title.text_frame.paragraphs[0].font.bold = False
-                donut.chart_title.text_frame.paragraphs[0].font.color.rgb = HEADER_TEXT_COLOR  # Red color for title
-                
-                # Set chart background
-                donut.chart_style = 2  # White background
-                
-                for i, point in enumerate(donut.series[0].points):
-                    point.format.fill.solid()
-                    point.format.fill.fore_color.rgb = SENTIMENT_COLORS[list(SENTIMENT_COLORS.keys())[i]]
-                    # Add data label with arrow
-                    point.has_data_label = True
-                    point.data_label.font.size = Pt(10)
-                    point.data_label.font.bold = True
-                    # Calculate percentage for current point
-                    values = [sentiment_counts.get(1, 0), sentiment_counts.get(0, 0), sentiment_counts.get(-1, 0)]
-                    total = sum(values)
-                    current_value = values[i]
-                    percentage = (current_value / total) * 100 if total > 0 else 0
-                    # Format label to show both count and percentage
-                    point.data_label.text_frame.text = f"{current_value:,} ({percentage:.1f}%)"
-                    for paragraph in point.data_label.text_frame.paragraphs:
-                        paragraph.font.size = Pt(8)
+                create_sentiment_donut_chart(slide9, x, y, donut_size, donut_size - Inches(0.4), sentiment_counts)
                                                         
                 # Info section with separated text boxes
                 x = right_section_left
@@ -2362,68 +2191,8 @@ def create_ppt(data_frames, output_path, start_date, end_date, company_name, com
                     # Donut chart on right top half (where multiline was)
                     x_donut = full_content_width - donut_width + Inches(0.5) # Start after text section
                     y_donut = Inches(1.2)  # Same vertical alignment as text
-                    
-                    try:
-                        # Add donut chart below its title
-                        sentiment_counts = company_sentiment['Sentiment'].value_counts()
-                        
-                        # Safely get values and convert to int
-                        pos_val = int(sentiment_counts.get(1, 0)) if 1 in sentiment_counts.index else 0
-                        neu_val = int(sentiment_counts.get(0, 0)) if 0 in sentiment_counts.index else 0
-                        neg_val = int(sentiment_counts.get(-1, 0)) if -1 in sentiment_counts.index else 0
-                        
-                        donut_data = ChartData()
-                        donut_data.categories = ['Positive', 'Neutral', 'Negative']
-                        donut_data.add_series('', [pos_val, neu_val, neg_val])
-                        
-                        bg_box = add_bg_box(slide10, x_donut, y_donut, donut_width, donut_heigth, color=CHART_BG_COLOR)
-                        donut = slide10.shapes.add_chart(
-                            XL_CHART_TYPE.DOUGHNUT, 
-                            x_donut, 
-                            y_donut,
-                            donut_width, 
-                            donut_heigth,
-                            donut_data
-                        ).chart
-                        
-                        donut.has_legend = True
-                        donut.legend.position = XL_LEGEND_POSITION.TOP
-                        donut.legend.font.size = Pt(12)
-                        donut.chart_style = 2  # White background 
-                        
-                        donut.has_title = True
-                        
-                        donut.chart_title.text_frame.text = f"{CHARTS_ICONS.get('Time Distribution', '📊')}  Postların sentiment bölgüsü"
-                        donut.chart_title.text_frame.paragraphs[0].font.size = Pt(14)
-                        donut.chart_title.text_frame.paragraphs[0].font.bold = False
-                        donut.chart_title.text_frame.paragraphs[0].font.color.rgb = HEADER_TEXT_COLOR  # Red color for title
-                        
-                        # Apply colors and data labels to donut chart
-                        sentiment_colors_list = list(SENTIMENT_COLORS.keys())
-                        values = [pos_val, neu_val, neg_val]
-                        total = sum(values)
-                        
-                        for i, point in enumerate(donut.series[0].points):
-                            try:
-                                point.format.fill.solid()
-                                if i < len(sentiment_colors_list):
-                                    point.format.fill.fore_color.rgb = SENTIMENT_COLORS[sentiment_colors_list[i]]
-                                point.has_data_label = True
-                                point.data_label.font.size = Pt(10)
-                                point.data_label.font.bold = True
-                                
-                                # Calculate percentage for current point
-                                current_value = values[i] if i < len(values) else 0
-                                percentage = (current_value / total) * 100 if total > 0 else 0
-                                # Format label to show both count and percentage
-                                point.data_label.text_frame.text = f"{current_value:,} ({percentage:.1f}%)"
-                                for paragraph in point.data_label.text_frame.paragraphs:
-                                    paragraph.font.size = Pt(8)
-                            except Exception as e:
-                                print(f"Error formatting donut point {i}: {e}")
-                                            
-                    except Exception as e:
-                        print(f"Error creating donut chart: {e}")
+                    create_sentiment_donut_chart(slide10, x_donut, y_donut, donut_width, donut_heigth, sentiment_counts)
+
 
                     # Stacked progress bar chart for sentiment by day
                     # Position stacked bar chart in bottom half, full width
@@ -2543,54 +2312,8 @@ def create_ppt(data_frames, output_path, start_date, end_date, company_name, com
                     # Donut chart on left top half
                     x_donut = Inches(0.5)
                     y_donut = Inches(1.2)  # Just below header
-                    
-                    # Add donut chart below its title
-                    sentiment_counts = company_sentiment['Sentiment'].value_counts()
-                    donut_data = ChartData()
-                    donut_data.categories = ['Positive', 'Neutral', 'Negative']
-                    donut_data.add_series('', [
-                        sentiment_counts.get(1, 0),
-                        sentiment_counts.get(0, 0),
-                        sentiment_counts.get(-1, 0)
-                    ])
-                    bg_box = add_bg_box(slide11, x_donut, y_donut, donut_size, donut_size - Inches(0.4), color=CHART_BG_COLOR)
-                    donut = slide11.shapes.add_chart(
-                        XL_CHART_TYPE.DOUGHNUT, 
-                        x_donut, 
-                        y_donut,
-                        donut_size, 
-                        donut_size - Inches(0.4),
-                        donut_data
-                    ).chart
-                    
-                    donut.has_legend = True
-                    donut.legend.position = XL_LEGEND_POSITION.TOP
-                    donut.legend.font.size = Pt(12)
-                    donut.chart_style = 2  # White background 
-                    
-                    donut.has_title = True
-                    
-                    donut.chart_title.text_frame.text = f"{CHARTS_ICONS['Time Distribution']}  Postların sentiment bölgüsü"
-                    donut.chart_title.text_frame.paragraphs[0].font.size = Pt(14)
-                    donut.chart_title.text_frame.paragraphs[0].font.bold = False
-                    donut.chart_title.text_frame.paragraphs[0].font.color.rgb = HEADER_TEXT_COLOR  # Red color for title
-                    
-                    # Apply colors and data labels to donut chart
-                    for i, point in enumerate(donut.series[0].points):
-                        point.format.fill.solid()
-                        point.format.fill.fore_color.rgb = SENTIMENT_COLORS[list(SENTIMENT_COLORS.keys())[i]]
-                        point.has_data_label = True
-                        point.data_label.font.size = Pt(10)
-                        point.data_label.font.bold = True
-                        # Calculate percentage for current point
-                        values = [sentiment_counts.get(1, 0), sentiment_counts.get(0, 0), sentiment_counts.get(-1, 0)]
-                        total = sum(values)
-                        current_value = values[i]
-                        percentage = (current_value / total) * 100 if total > 0 else 0
-                        # Format label to show both count and percentage
-                        point.data_label.text_frame.text = f"{current_value:,} ({percentage:.1f}%)"
-                        for paragraph in point.data_label.text_frame.paragraphs:
-                            paragraph.font.size = Pt(8)
+                    create_sentiment_donut_chart(slide11, x_donut, y_donut, donut_size, 
+                        donut_size - Inches(0.4), sentiment_counts)
                                             
                     # Multiline chart in right half
                     # Position multiline chart in right half of top section
@@ -2623,10 +2346,7 @@ def create_ppt(data_frames, output_path, start_date, end_date, company_name, com
                     chart.legend.font.size = Pt(12)
                     
                     # Set chart background and formatting
-                    # Set colors for donut chart
-                    for i, point in enumerate(donut.series[0].points):
-                        point.format.fill.solid()
-                        point.format.fill.fore_color.rgb = SENTIMENT_COLORS[list(SENTIMENT_COLORS.keys())[i]]
+
                     apply_chart_formatting(chart, title="Postların zamana və sentimentə görə bölgüsü", icon=CHARTS_ICONS['Sentiment Trend'])
                     for i, series in enumerate(chart.series):
                         series.format.line.color.rgb = SENTIMENT_COLORS[list(SENTIMENT_COLORS.keys())[i]]
@@ -2784,68 +2504,7 @@ def create_ppt(data_frames, output_path, start_date, end_date, company_name, com
                     # Donut chart on right top half (where multiline was)
                     x_donut = full_content_width - donut_width + Inches(0.5) # Start after text section
                     y_donut = Inches(1.2)  # Same vertical alignment as text
-                    
-                    try:
-                        # Add donut chart below its title
-                        sentiment_counts = company_sentiment['Sentiment'].value_counts()
-                        
-                        # Safely get values and convert to int
-                        pos_val = int(sentiment_counts.get(1, 0)) if 1 in sentiment_counts.index else 0
-                        neu_val = int(sentiment_counts.get(0, 0)) if 0 in sentiment_counts.index else 0
-                        neg_val = int(sentiment_counts.get(-1, 0)) if -1 in sentiment_counts.index else 0
-                        
-                        donut_data = ChartData()
-                        donut_data.categories = ['Positive', 'Neutral', 'Negative']
-                        donut_data.add_series('', [pos_val, neu_val, neg_val])
-                        
-                        bg_box = add_bg_box(slide11, x_donut, y_donut, donut_width, donut_heigth, color=CHART_BG_COLOR)
-                        donut = slide11.shapes.add_chart(
-                            XL_CHART_TYPE.DOUGHNUT, 
-                            x_donut, 
-                            y_donut,
-                            donut_width, 
-                            donut_heigth,
-                            donut_data
-                        ).chart
-                        
-                        donut.has_legend = True
-                        donut.legend.position = XL_LEGEND_POSITION.TOP
-                        donut.legend.font.size = Pt(12)
-                        donut.chart_style = 2  # White background 
-                        
-                        donut.has_title = True
-                        
-                        donut.chart_title.text_frame.text = f"{CHARTS_ICONS.get('Time Distribution', '📊')}  Postların sentiment bölgüsü"
-                        donut.chart_title.text_frame.paragraphs[0].font.size = Pt(14)
-                        donut.chart_title.text_frame.paragraphs[0].font.bold = False
-                        donut.chart_title.text_frame.paragraphs[0].font.color.rgb = HEADER_TEXT_COLOR  # Red color for title
-                        
-                        # Apply colors and data labels to donut chart
-                        sentiment_colors_list = list(SENTIMENT_COLORS.keys())
-                        values = [pos_val, neu_val, neg_val]
-                        total = sum(values)
-                        
-                        for i, point in enumerate(donut.series[0].points):
-                            try:
-                                point.format.fill.solid()
-                                if i < len(sentiment_colors_list):
-                                    point.format.fill.fore_color.rgb = SENTIMENT_COLORS[sentiment_colors_list[i]]
-                                point.has_data_label = True
-                                point.data_label.font.size = Pt(10)
-                                point.data_label.font.bold = True
-                                
-                                # Calculate percentage for current point
-                                current_value = values[i] if i < len(values) else 0
-                                percentage = (current_value / total) * 100 if total > 0 else 0
-                                # Format label to show both count and percentage
-                                point.data_label.text_frame.text = f"{current_value:,} ({percentage:.1f}%)"
-                                for paragraph in point.data_label.text_frame.paragraphs:
-                                    paragraph.font.size = Pt(8)
-                            except Exception as e:
-                                print(f"Error formatting donut point {i}: {e}")
-                                            
-                    except Exception as e:
-                        print(f"Error creating donut chart: {e}")
+                    create_sentiment_donut_chart(slide11, x_donut, y_donut, donut_width, donut_heigth, sentiment_counts)
 
                     # Stacked progress bar chart for sentiment by day
                     # Position stacked bar chart in bottom half, full width
