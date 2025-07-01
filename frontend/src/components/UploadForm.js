@@ -152,13 +152,13 @@ function UploadForm() {
 
     try {
       const formData = new FormData();
-
+      
       Object.entries(excels).forEach(([type, file]) => {
         if (file) {
           formData.append("excel_files", file);
         }
       });
-
+      
       formData.append("company_logo", logos.company);
       formData.append("mediaeye_logo", logos.mediaEye);
       formData.append("neurotime_logo", logos.neuroTime);
@@ -169,7 +169,7 @@ function UploadForm() {
           formData.append("competitor_logos", logo);
         }
       });
-
+      
       formData.append(
         "positive_links",
         JSON.stringify(positiveLinks.filter((link) => link.trim() !== ""))
@@ -178,28 +178,28 @@ function UploadForm() {
         "negative_links",
         JSON.stringify(negativeLinks.filter((link) => link.trim() !== ""))
       );
-
+      
       positivePosts.forEach((post, index) => {
         if (post.image) {
           formData.append(`positive_post_image_${index}`, post.image);
           formData.append(`positive_post_link_${index}`, post.link);
         }
       });
-
+      
       negativePosts.forEach((post, index) => {
         if (post.image) {
           formData.append(`negative_post_image_${index}`, post.image);
           formData.append(`negative_post_link_${index}`, post.link);
         }
       });
-
+      
       formData.append("start_date", startDate);
       formData.append("end_date", endDate);
       formData.append("company_name", companyName);
       formData.append("has_competitors", hasCompetitors);
-
-      const response = await axios.post(
-        "http://localhost:8000/generate-ppt/",
+      
+      const apiUrl = process.env.REACT_APP_API_URL;
+      const response = await axios.post(`${apiUrl}/generate-ppt/`,
         formData,
         {
           responseType: "blob",
