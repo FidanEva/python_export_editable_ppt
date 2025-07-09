@@ -16,7 +16,7 @@ logger = logging.getLogger(__name__)
 # Define colors
 SLIDE_BG_COLOR = RGBColor(245, 245, 245)  # Light gray
 CHART_BG_COLOR = RGBColor(255, 255, 255)  # White
-HEADER_TEXT_COLOR = RGBColor(214, 55, 64)    # Red
+DEFAULT_COLOR = RGBColor(214, 55, 64)    # Red
 HEADER_HEIGHT = 0.8
 
 # Define sentiment colors
@@ -66,7 +66,7 @@ def format_chart_axes(chart, category_font_size=6, value_font_size=6, rotation_a
             chart.value_axis.axis_title.text_frame.paragraphs[0].font.size = Pt(value_font_size)
         chart.value_axis.tick_labels.font.color.rgb = RGBColor(89, 89, 89)
         chart.value_axis.has_major_gridlines = False
-def add_slide_header(slide, company_logo_path, start_date, end_date, title):
+def add_slide_header(slide, company_logo_path, start_date, end_date, title, title_color=DEFAULT_COLOR, template_color=DEFAULT_COLOR):
     """Helper function to add a consistent header to slides"""
 
     # Set constants
@@ -105,7 +105,7 @@ def add_slide_header(slide, company_logo_path, start_date, end_date, title):
     p.font.size = Pt(16)
     p.font.bold = True
     p.alignment = PP_ALIGN.CENTER
-    p.font.color.rgb = HEADER_TEXT_COLOR
+    p.font.color.rgb = title_color
 
     # Add date on the far right, a bit lower
     date_box = slide.shapes.add_textbox(
@@ -118,7 +118,7 @@ def add_slide_header(slide, company_logo_path, start_date, end_date, title):
     p.text = f"📅 {start_date} - {end_date}"
     p.font.size = Pt(12)
     p.alignment = PP_ALIGN.RIGHT
-    p.font.color.rgb = HEADER_TEXT_COLOR
+    p.font.color.rgb = title_color
 
     # Add divider line under the header, same width
     line = slide.shapes.add_shape(
@@ -127,10 +127,12 @@ def add_slide_header(slide, company_logo_path, start_date, end_date, title):
         Inches(HEADER_WIDTH), Inches(0.02)
     )
     line.fill.solid()
-    line.fill.fore_color.rgb = HEADER_TEXT_COLOR
-    line.line.fill.background()  # Remove border
+    line.fill.fore_color.rgb = template_color
+    line.line.fill.background()
+    
+    line.shadow.inherit = False
 
-def add_side_line(slide):
+def add_side_line(slide, template_color=DEFAULT_COLOR):
     """Helper function to add side line with only right corners rounded"""
     # Add side line (70% of slide height, centered vertically)
     slide_height = Inches(7.5)
@@ -146,28 +148,22 @@ def add_side_line(slide):
         line_height
     )
     
-    # Adjust roundness - number of adjustment points varies by shape
-    # [0]: overall roundness (0-1)
-    # [1]: top-left corner roundness (0=square, 1=round)
-    # [2]: top-right corner roundness
-    # [3]: bottom-right corner roundness
-    # [4]: bottom-left corner roundness
     if len(side_line.adjustments) >= 5:
-        side_line.adjustments[0] = 1      # Set maximum roundness
-        side_line.adjustments[1] = 0      # Square top-left
-        side_line.adjustments[2] = 1      # Round top-right
-        side_line.adjustments[3] = 1      # Round bottom-right
-        side_line.adjustments[4] = 0      # Square bottom-left
+        side_line.adjustments[0] = 1
+        side_line.adjustments[1] = 0
+        side_line.adjustments[2] = 1
+        side_line.adjustments[3] = 1
+        side_line.adjustments[4] = 0
     
     # Apply fill and remove border
     side_line.fill.solid()
-    side_line.fill.fore_color.rgb = HEADER_TEXT_COLOR
+    side_line.fill.fore_color.rgb = template_color
     side_line.line.fill.background()
     
 # Function to apply consistent chart formatting
 def apply_chart_formatting(chart, use_legend=True, legend_position=XL_LEGEND_POSITION.TOP, 
                          category_font_size=6, value_font_size=6, 
-                         title=None, title_size=14, icon='📊'):
+                         title=None, title_size=14, icon='📊', graph_color = DEFAULT_COLOR):
     """Helper function for consistent chart formatting across slides"""
     
     # Basic chart settings
@@ -187,7 +183,7 @@ def apply_chart_formatting(chart, use_legend=True, legend_position=XL_LEGEND_POS
         chart.chart_title.text_frame.text = f"{icon} {title}"
         chart.chart_title.text_frame.paragraphs[0].font.size = Pt(title_size)
         chart.chart_title.text_frame.paragraphs[0].font.bold = False
-        chart.chart_title.text_frame.paragraphs[0].font.color.rgb = HEADER_TEXT_COLOR
+        chart.chart_title.text_frame.paragraphs[0].font.color.rgb = graph_color
         
     # Axis formatting
     if hasattr(chart, 'category_axis'):
@@ -226,7 +222,7 @@ def add_bg_box(slide, left, top, width, height, color=RGBColor(255, 255, 255)):
     bg_box.adjustments[0] = 0.01  # Adjust roundness if needed
     return bg_box
 
-def create_sentiment_line_chart(slide, x, y, cx, cy, chart_data, title, icon=CHARTS_ICONS['Sentiment Trend']):
+def create_sentiment_line_chart(slide, x, y, cx, cy, chart_data, title, icon=CHARTS_ICONS['Sentiment Trend'], graph_color=DEFAULT_COLOR):
     """Helper function to create a sentiment line chart."""
     
     add_bg_box(slide, x, y, cx, cy, color=CHART_BG_COLOR)
@@ -239,7 +235,7 @@ def create_sentiment_line_chart(slide, x, y, cx, cy, chart_data, title, icon=CHA
     chart.legend.position = XL_LEGEND_POSITION.TOP
     chart.legend.font.size = Pt(12)
 
-    apply_chart_formatting(chart, title=title, icon=icon)
+    apply_chart_formatting(chart, title=title, icon=icon, graph_color=graph_color)
     
     for i, series in enumerate(chart.series):
         series.format.line.color.rgb = SENTIMENT_COLORS[list(SENTIMENT_COLORS.keys())[i]]
@@ -247,7 +243,7 @@ def create_sentiment_line_chart(slide, x, y, cx, cy, chart_data, title, icon=CHA
         
     return chart
 
-def create_sentiment_donut_chart(slide, x, y, cx, cy, sentiment_counts, title = f"{CHARTS_ICONS['Time Distribution']} Bank postlarının sentiment bölgüsü"):
+def create_sentiment_donut_chart(slide, x, y, cx, cy, sentiment_counts, graph_color = DEFAULT_COLOR, title = f"{CHARTS_ICONS['Time Distribution']} Bank postlarının sentiment bölgüsü"):
     """Helper function to create a sentiment donut chart."""
     
     add_bg_box(slide, x, y, cx, cy, color=CHART_BG_COLOR)
@@ -275,7 +271,7 @@ def create_sentiment_donut_chart(slide, x, y, cx, cy, sentiment_counts, title = 
     donut.chart_title.text_frame.text = title
     donut.chart_title.text_frame.paragraphs[0].font.size = Pt(14)
     donut.chart_title.text_frame.paragraphs[0].font.bold = False
-    donut.chart_title.text_frame.paragraphs[0].font.color.rgb = HEADER_TEXT_COLOR
+    donut.chart_title.text_frame.paragraphs[0].font.color.rgb = graph_color
 
     donut.chart_style = 2  # White background
 
@@ -304,14 +300,40 @@ def create_sentiment_donut_chart(slide, x, y, cx, cy, sentiment_counts, title = 
     
     return donut
 
-def create_ppt(data_frames, output_path, start_date, end_date, company_name, company_logo_path, mediaeye_logo_path, neurotime_logo_path, competitor_logo_paths=None, positive_links=None, negative_links=None, positive_posts=None, negative_posts=None, has_competitors=True):
+def hex_to_rgbcolor(hex_color):
+    if isinstance(hex_color, str) and hex_color.startswith("#") and len(hex_color) == 7:
+        r = int(hex_color[1:3], 16)
+        g = int(hex_color[3:5], 16)
+        b = int(hex_color[5:7], 16)
+        return RGBColor(r, g, b)
+    return hex_color
+
+def create_ppt(data_frames, output_path, start_date, end_date, company_name, company_logo_path, mediaeye_logo_path, neurotime_logo_path, competitor_logo_paths=None, positive_links=None, negative_links=None, positive_posts=None, negative_posts=None, has_competitors=True, template_color=None, title_color=None, graph_color=None):
     try:
         logger.debug("Creating PowerPoint presentation")
+        logger.debug("TEMPLATE COLOR: %s", template_color)
         prs = Presentation()
         
         # Set slide dimensions to landscape (16:9)
         prs.slide_width = Inches(13.33)
         prs.slide_height = Inches(7.5)
+        
+
+        if template_color is not None:
+            template_color = hex_to_rgbcolor(template_color)
+        else:
+            template_color = DEFAULT_COLOR
+
+        if title_color is not None:
+            title_color = hex_to_rgbcolor(title_color)
+        else:
+            title_color = DEFAULT_COLOR
+
+        if graph_color is not None:
+            graph_color = hex_to_rgbcolor(graph_color)
+        else:
+            graph_color = DEFAULT_COLOR
+
         
         # region  First slide - Title slide with logos and text
         logger.debug("Creating title slide")
@@ -536,8 +558,8 @@ def create_ppt(data_frames, output_path, start_date, end_date, company_name, com
                 sp = shape._element
                 sp.getparent().remove(sp)
 
-        add_slide_header(slide3, company_logo_path, start_date, end_date, "XƏBƏRLƏRİN ANALİZİ")
-        add_side_line(slide3)
+        add_slide_header(slide3, company_logo_path, start_date, end_date, "XƏBƏRLƏRİN ANALİZİ", title_color, template_color)
+        add_side_line(slide3, template_color)
 
         # Set slide background
         background = slide3.background
@@ -679,13 +701,13 @@ def create_ppt(data_frames, output_path, start_date, end_date, company_name, com
         left, top = multiline_chart_x, bottom_row_y
         x, y, cx, cy = left, top, multiline_chart_width, bottom_section_height
 
-        create_sentiment_line_chart(slide3, x, y, cx, cy, chart_data, title="Xəbərlərin sentiment və zamana görə bölgüsü")
+        create_sentiment_line_chart(slide3, x, y, cx, cy, chart_data, title="Xəbərlərin sentiment və zamana görə bölgüsü", graph_color=graph_color)
 
         # Create donut chart (bottom right) - narrower and centered
         logger.debug("Creating donut chart")
         left, top = donut_chart_x, bottom_row_y
         x, y, cx, cy = left, top, donut_chart_width, bottom_section_height
-        create_sentiment_donut_chart(slide3, x, y, cx, cy, sentiment_counts)
+        create_sentiment_donut_chart(slide3, x, y, cx, cy, sentiment_counts, graph_color=graph_color)
         # endregion
 
         # region Fourth slide - Vertical multibar chart
@@ -698,8 +720,8 @@ def create_ppt(data_frames, output_path, start_date, end_date, company_name, com
                     sp = shape._element
                     sp.getparent().remove(sp)
 
-            add_slide_header(slide4, company_logo_path, start_date, end_date, "XƏBƏRLƏRİN ANALİZİ")
-            add_side_line(slide4)
+            add_slide_header(slide4, company_logo_path, start_date, end_date, "XƏBƏRLƏRİN ANALİZİ", title_color, template_color)
+            add_side_line(slide4, template_color)
 
             # Set slide background
             background = slide4.background
@@ -747,7 +769,7 @@ def create_ppt(data_frames, output_path, start_date, end_date, company_name, com
             chart.chart_title.text_frame.text = "📊 Post saylarına görə bankların bölgüsü"
             chart.chart_title.text_frame.paragraphs[0].font.size = Pt(14)
             chart.chart_title.text_frame.paragraphs[0].font.bold = False
-            chart.chart_title.text_frame.paragraphs[0].font.color.rgb = HEADER_TEXT_COLOR  # Red color for title
+            chart.chart_title.text_frame.paragraphs[0].font.color.rgb = graph_color
             # Set white background for chart
             chart.chart_style = 2  # White background style
             
@@ -815,8 +837,8 @@ def create_ppt(data_frames, output_path, start_date, end_date, company_name, com
                 sp = shape._element
                 sp.getparent().remove(sp)
 
-        add_slide_header(slide5, company_logo_path, start_date, end_date, "Xəbər saylarının saytlar üzərindən bölgüsü")
-        add_side_line(slide5)
+        add_slide_header(slide5, company_logo_path, start_date, end_date, "Xəbər saylarının saytlar üzərindən bölgüsü", title_color, template_color)
+        add_side_line(slide5, template_color)
 
         # Set slide background
         background = slide5.background
@@ -972,8 +994,8 @@ def create_ppt(data_frames, output_path, start_date, end_date, company_name, com
             if shape.has_text_frame:
                 sp = shape._element
                 sp.getparent().remove(sp)
-        add_slide_header(slide6, company_logo_path, start_date, end_date, "Facebook postlarının analizi")
-        add_side_line(slide6)
+        add_slide_header(slide6, company_logo_path, start_date, end_date, "Facebook postlarının analizi", title_color, template_color)
+        add_side_line(slide6, template_color)
 
         # Set slide background
         background = slide6.background
@@ -1027,10 +1049,9 @@ def create_ppt(data_frames, output_path, start_date, end_date, company_name, com
                     icon_left, icon_top, icon_width, icon_height
                 )
                 icon_box.fill.solid()
-                icon_box.fill.fore_color.rgb = HEADER_TEXT_COLOR
-                icon_box.line.fill.background()  # Remove border
+                icon_box.fill.fore_color.rgb = template_color
+                icon_box.line.fill.background()
                 
-                # Icon text (white, centered inside red bg)
                 icon_text = slide6.shapes.add_textbox(
                     icon_left, icon_top, icon_width, icon_height
                 )
@@ -1098,7 +1119,7 @@ def create_ppt(data_frames, output_path, start_date, end_date, company_name, com
                 x = right_section_left
                 y = Inches(1.2)
                 
-                create_sentiment_donut_chart(slide6, x, y, donut_size, donut_size - Inches(0.4), sentiment_counts)
+                create_sentiment_donut_chart(slide6, x, y, donut_size, donut_size - Inches(0.4), sentiment_counts, graph_color=graph_color)
 
                 # Multiline chart
                 sentiment_by_date = company_sentiment.groupby('Day')['Sentiment'].value_counts().unstack(fill_value=0)
@@ -1117,7 +1138,7 @@ def create_ppt(data_frames, output_path, start_date, end_date, company_name, com
                 cy = donut_size - Inches(0.4)  # Same height as donut
                 
                 title = "Postların zamana və sentimentə görə bölgüsü"
-                create_sentiment_line_chart(slide6, x, y, cx, cy, chart_data, title)
+                create_sentiment_line_chart(slide6, x, y, cx, cy, chart_data, title, graph_color=graph_color)
                     
                 # Vertical multibar chart
                 x = right_section_left
@@ -1146,7 +1167,7 @@ def create_ppt(data_frames, output_path, start_date, end_date, company_name, com
                 chart.legend.font.size = Pt(12)
 
                 # Set chart background and formatting
-                apply_chart_formatting(chart, title="Post saylarına görə bankların bölgüsü")
+                apply_chart_formatting(chart, title="Post saylarına görə bankların bölgüsü", graph_color=graph_color)
                 apply_sentiment_colors(chart)
         else: # no competitiors
             left = Inches(0.5)
@@ -1186,7 +1207,7 @@ def create_ppt(data_frames, output_path, start_date, end_date, company_name, com
             para.alignment = PP_ALIGN.CENTER
             para.font.size = Pt(13)
             para.font.bold = True
-            para.font.color.rgb = HEADER_TEXT_COLOR
+            para.font.color.rgb = graph_color
 
             # Now render each metric card (at bottom)
             for i, (metric, value) in enumerate(metrics.items()):
@@ -1205,7 +1226,7 @@ def create_ppt(data_frames, output_path, start_date, end_date, company_name, com
                     MSO_SHAPE.ROUNDED_RECTANGLE, icon_left, icon_top, icon_width, icon_height
                 )
                 icon_box.fill.solid()
-                icon_box.fill.fore_color.rgb = HEADER_TEXT_COLOR
+                icon_box.fill.fore_color.rgb = template_color
                 icon_box.line.fill.background()
 
                 icon_text = slide6.shapes.add_textbox(icon_left, icon_top, icon_width, icon_height)
@@ -1269,7 +1290,7 @@ def create_ppt(data_frames, output_path, start_date, end_date, company_name, com
                 x = right_section_left
                 y = Inches(1.2)
                 
-                create_sentiment_donut_chart(slide6, x, y, donut_size, donut_size - Inches(0.4), sentiment_counts)
+                create_sentiment_donut_chart(slide6, x, y, donut_size, donut_size - Inches(0.4), sentiment_counts, graph_color=graph_color)
 
                 # Text section instead of multiline chart
                 x_text = right_section_left + donut_size + Inches(0.3)  # After donut chart
@@ -1419,10 +1440,10 @@ def create_ppt(data_frames, output_path, start_date, end_date, company_name, com
                 chart.chart_title.text_frame.text = f"{CHARTS_ICONS['Sentiment Trend']} Postların günlər üzrə bölgüsü"
                 chart.chart_title.text_frame.paragraphs[0].font.size = Pt(14)
                 chart.chart_title.text_frame.paragraphs[0].font.bold = False
-                chart.chart_title.text_frame.paragraphs[0].font.color.rgb = HEADER_TEXT_COLOR
+                chart.chart_title.text_frame.paragraphs[0].font.color.rgb = graph_color
 
                 # Set chart background and formatting
-                apply_chart_formatting(chart, title="Postların günlər üzrə bölgüsü", icon=CHARTS_ICONS['Sentiment Trend'])
+                apply_chart_formatting(chart, title="Postların günlər üzrə bölgüsü", icon=CHARTS_ICONS['Sentiment Trend'], graph_color=graph_color)
                 for i, series in enumerate(chart.series):
                     series.format.fill.solid()
                     series.format.fill.fore_color.rgb = SENTIMENT_COLORS[list(SENTIMENT_COLORS.keys())[i]]
@@ -1463,7 +1484,7 @@ def create_ppt(data_frames, output_path, start_date, end_date, company_name, com
             para.alignment = PP_ALIGN.CENTER
             para.font.size = Pt(13)
             para.font.bold = True
-            para.font.color.rgb = HEADER_TEXT_COLOR
+            para.font.color.rgb = graph_color
 
             for i, (metric, value) in enumerate(metrics.items()):
                 box_top = top + top_margin + (metrics_height * i) + (card_spacing * i)
@@ -1481,7 +1502,7 @@ def create_ppt(data_frames, output_path, start_date, end_date, company_name, com
                     icon_left, icon_top, icon_width, icon_height
                 )
                 icon_box.fill.solid()
-                icon_box.fill.fore_color.rgb = HEADER_TEXT_COLOR
+                icon_box.fill.fore_color.rgb = template_color
                 icon_box.line.fill.background()  # Remove border
                 
                 # Icon text (white, centered inside red bg)
@@ -1539,8 +1560,8 @@ def create_ppt(data_frames, output_path, start_date, end_date, company_name, com
                 if shape.has_text_frame:
                     sp = shape._element
                     sp.getparent().remove(sp)
-            add_slide_header(slide7, company_logo_path, start_date, end_date, "Banklar haqqında paylaşılan postların analizi")
-            add_side_line(slide7)
+            add_slide_header(slide7, company_logo_path, start_date, end_date, "Banklar haqqında paylaşılan postların analizi", title_color, template_color)
+            add_side_line(slide7, template_color)
 
             # Set slide background
             background = slide7.background
@@ -1593,7 +1614,7 @@ def create_ppt(data_frames, output_path, start_date, end_date, company_name, com
                     cell.text_frame.paragraphs[0].font.size = Pt(12)
                     cell.text_frame.paragraphs[0].font.bold = True
                     cell.fill.solid()
-                    cell.fill.fore_color.rgb = HEADER_TEXT_COLOR
+                    cell.fill.fore_color.rgb = template_color
                     cell.text_frame.paragraphs[0].font.color.rgb = RGBColor(255, 255, 255)  # White text
                 
                 # Add data with alternating row colors
@@ -1633,8 +1654,8 @@ def create_ppt(data_frames, output_path, start_date, end_date, company_name, com
                 if shape.has_text_frame:
                     sp = shape._element
                     sp.getparent().remove(sp)
-            add_slide_header(slide8, company_logo_path, start_date, end_date, "Bankların rəsmi Facebook səhifələrinin analizi")
-            add_side_line(slide8)
+            add_slide_header(slide8, company_logo_path, start_date, end_date, "Bankların rəsmi Facebook səhifələrinin analizi", title_color, template_color)
+            add_side_line(slide8, template_color)
 
             # Set slide background
             background = slide8.background
@@ -1693,7 +1714,7 @@ def create_ppt(data_frames, output_path, start_date, end_date, company_name, com
                     cell.text_frame.paragraphs[0].font.size = Pt(12)
                     cell.text_frame.paragraphs[0].font.bold = True
                     cell.fill.solid()
-                    cell.fill.fore_color.rgb = HEADER_TEXT_COLOR
+                    cell.fill.fore_color.rgb = template_color
                     cell.text_frame.paragraphs[0].font.color.rgb = RGBColor(255, 255, 255)  # White text
                 
                 # Add data with alternating row colors
@@ -1732,8 +1753,8 @@ def create_ppt(data_frames, output_path, start_date, end_date, company_name, com
             if shape.has_text_frame:
                 sp = shape._element
                 sp.getparent().remove(sp)
-        add_slide_header(slide9, company_logo_path, start_date, end_date, "Instagram postlarının analizi")
-        add_side_line(slide9)
+        add_slide_header(slide9, company_logo_path, start_date, end_date, "Instagram postlarının analizi", title_color, template_color)
+        add_side_line(slide9, template_color)
 
         # Set slide background
         background = slide9.background
@@ -1789,7 +1810,7 @@ def create_ppt(data_frames, output_path, start_date, end_date, company_name, com
                 icon_left, icon_top, icon_width, icon_height
             )
             icon_box.fill.solid()
-            icon_box.fill.fore_color.rgb = HEADER_TEXT_COLOR  # Red background
+            icon_box.fill.fore_color.rgb = template_color
             icon_box.line.fill.background()  # Remove border
             
             # Add icon text (centered inside red bg)
@@ -1856,7 +1877,7 @@ def create_ppt(data_frames, output_path, start_date, end_date, company_name, com
                 x = right_section_left
                 y = Inches(1.2)
 
-                create_sentiment_donut_chart(slide9, x, y, donut_size + Inches(0.3), donut_size - Inches(0.4), sentiment_counts)
+                create_sentiment_donut_chart(slide9, x, y, donut_size + Inches(0.3), donut_size - Inches(0.4), sentiment_counts, graph_color=graph_color)
 
                 # Multiline chart
                 x = right_section_left + donut_size + Inches(0.5)  # After donut chart
@@ -1872,7 +1893,7 @@ def create_ppt(data_frames, output_path, start_date, end_date, company_name, com
                         chart_data.add_series(series_name, sentiment_by_date[sentiment].tolist())
                 
                 title = "Postların zamana və sentimentə görə bölgüsü"
-                create_sentiment_line_chart(slide9, x, y, cx, cy, chart_data, title, icon=CHARTS_ICONS['Sentiment Trend'])
+                create_sentiment_line_chart(slide9, x, y, cx, cy, chart_data, title, icon=CHARTS_ICONS['Sentiment Trend'], graph_color=graph_color)
                     
                 # Vertical multibar chart for Instagram company sentiment comparison
                 # Position multibar chart to take full width of right section
@@ -1903,7 +1924,7 @@ def create_ppt(data_frames, output_path, start_date, end_date, company_name, com
 
                 # Set chart background and formatting
                 apply_sentiment_colors(chart)
-                apply_chart_formatting(chart, title="Post saylarına görə bankların bölgüsü")
+                apply_chart_formatting(chart, title="Post saylarına görə bankların bölgüsü", graph_color=graph_color)
 
             else:
                 # Position smaller donut chart centered in its section
@@ -1911,7 +1932,7 @@ def create_ppt(data_frames, output_path, start_date, end_date, company_name, com
                 x = right_section_left + right_width - donut_size - Inches(0.3)  # Centered in right section
                 y = Inches(1.2)
 
-                create_sentiment_donut_chart(slide9, x, y, donut_size + Inches(0.3), donut_size - Inches(0.4), sentiment_counts)
+                create_sentiment_donut_chart(slide9, x, y, donut_size + Inches(0.3), donut_size - Inches(0.4), sentiment_counts, graph_color=graph_color)
                                                         
                 # Info section with separated text boxes
                 x = right_section_left
@@ -2054,7 +2075,7 @@ def create_ppt(data_frames, output_path, start_date, end_date, company_name, com
 
                 # Add stacked column chart
                 chart = slide9.shapes.add_chart(
-                    XL_CHART_TYPE.COLUMN_STACKED,  # Changed from COLUMN_CLUSTERED to COLUMN_STACKED
+                    XL_CHART_TYPE.COLUMN_STACKED,
                     x, y, cx, cy, chart_data
                 ).chart
 
@@ -2065,7 +2086,7 @@ def create_ppt(data_frames, output_path, start_date, end_date, company_name, com
 
                 # Apply custom formatting and sentiment colors
                 apply_sentiment_colors(chart)
-                apply_chart_formatting(chart, title="Post saylarına görə bankların bölgüsü")
+                apply_chart_formatting(chart, title="Post saylarına görə bankların bölgüsü", graph_color=graph_color)
 
         # endregion
 
@@ -2078,8 +2099,8 @@ def create_ppt(data_frames, output_path, start_date, end_date, company_name, com
                 if shape.has_text_frame:
                     sp = shape._element
                     sp.getparent().remove(sp)
-            add_slide_header(slide10, company_logo_path, start_date, end_date, "Twitter postlarının analizi")
-            add_side_line(slide10)
+            add_slide_header(slide10, company_logo_path, start_date, end_date, "Twitter postlarının analizi", title_color, template_color)
+            add_side_line(slide10, template_color)
 
             # Set slide background
             background = slide10.background
@@ -2227,7 +2248,7 @@ def create_ppt(data_frames, output_path, start_date, end_date, company_name, com
                     # Donut chart on right top half (where multiline was)
                     x_donut = full_content_width - donut_width + Inches(0.5) # Start after text section
                     y_donut = Inches(1.2)  # Same vertical alignment as text
-                    create_sentiment_donut_chart(slide10, x_donut, y_donut, donut_width, donut_heigth, sentiment_counts)
+                    create_sentiment_donut_chart(slide10, x_donut, y_donut, donut_width, donut_heigth, sentiment_counts, graph_color=graph_color)
 
 
                     # Stacked progress bar chart for sentiment by day
@@ -2289,7 +2310,7 @@ def create_ppt(data_frames, output_path, start_date, end_date, company_name, com
                         
                         # Apply formatting and colors
                         try:
-                            apply_chart_formatting(chart, title="Günlük sentiment dağılımı")
+                            apply_chart_formatting(chart, title="Günlük sentiment dağılımı", graph_color=graph_color)
                             apply_sentiment_colors(chart)
                         except Exception as e:
                             print(f"Error applying chart formatting: {e}")
@@ -2320,8 +2341,8 @@ def create_ppt(data_frames, output_path, start_date, end_date, company_name, com
             if shape.has_text_frame:
                 sp = shape._element
                 sp.getparent().remove(sp)
-        add_slide_header(slide11, company_logo_path, start_date, end_date, "Linkedln postlarının analizi")
-        add_side_line(slide11)
+        add_slide_header(slide11, company_logo_path, start_date, end_date, "Linkedln postlarının analizi", title_color, template_color)
+        add_side_line(slide11, template_color)
 
         # Set slide background
         background = slide11.background
@@ -2349,7 +2370,7 @@ def create_ppt(data_frames, output_path, start_date, end_date, company_name, com
                     x_donut = Inches(0.5)
                     y_donut = Inches(1.2)  # Just below header
                     create_sentiment_donut_chart(slide11, x_donut, y_donut, donut_size, 
-                        donut_size - Inches(0.4), sentiment_counts)
+                        donut_size - Inches(0.4), sentiment_counts, graph_color=graph_color)
                                             
                     # Multiline chart in right half
                     # Position multiline chart in right half of top section
@@ -2357,8 +2378,6 @@ def create_ppt(data_frames, output_path, start_date, end_date, company_name, com
                     y_line = Inches(1.2)  # Same vertical alignment as donut
                     cx_line = Inches(8.33)  # Remaining width
                     cy_line = Inches(3.1)
-
-                    bg_box = add_bg_box(slide11, x_line, y_line, cx_line, cy_line, color=CHART_BG_COLOR)
 
                     sentiment_by_date = company_sentiment.groupby('Day')['Sentiment'].value_counts().unstack(fill_value=0)
                     chart_data = CategoryChartData()
@@ -2369,25 +2388,7 @@ def create_ppt(data_frames, output_path, start_date, end_date, company_name, com
                         if sentiment in sentiment_by_date.columns:
                             chart_data.add_series(series_name, sentiment_by_date[sentiment].tolist())
                     
-                    chart = slide11.shapes.add_chart(
-                        XL_CHART_TYPE.LINE,
-                        x_line, y_line,
-                        cx_line, cy_line,
-                        chart_data
-                    ).chart
-                    
-                    # Format line chart
-                    chart.has_legend = True
-                    chart.legend.position = XL_LEGEND_POSITION.TOP
-                    chart.legend.font.size = Pt(12)
-                    
-                    # Set chart background and formatting
-
-                    apply_chart_formatting(chart, title="Postların zamana və sentimentə görə bölgüsü", icon=CHARTS_ICONS['Sentiment Trend'])
-                    for i, series in enumerate(chart.series):
-                        series.format.line.color.rgb = SENTIMENT_COLORS[list(SENTIMENT_COLORS.keys())[i]]
-                        series.format.line.width = Pt(2)
-
+                    create_sentiment_line_chart(slide11, x_line, y_line, cx_line, cy_line, chart_data, title="Postların sentiment və zamana görə bölgüsü", graph_color=graph_color)
 
                     # Vertical multibar chart for LinkedIn company sentiment comparison
                     # Position multibar chart in bottom half, full width
@@ -2426,7 +2427,7 @@ def create_ppt(data_frames, output_path, start_date, end_date, company_name, com
                     chart.legend.font.size = Pt(12)
                     
                     # Apply formatting and colors
-                    apply_chart_formatting(chart, title="Post saylarına görə bankların bölgüsü")
+                    apply_chart_formatting(chart, title="Post saylarına görə bankların bölgüsü", graph_color=graph_color)
                     apply_sentiment_colors(chart)
                     
                     # Add data labels at outside end with size 10
@@ -2540,7 +2541,7 @@ def create_ppt(data_frames, output_path, start_date, end_date, company_name, com
                     # Donut chart on right top half (where multiline was)
                     x_donut = full_content_width - donut_width + Inches(0.5) # Start after text section
                     y_donut = Inches(1.2)  # Same vertical alignment as text
-                    create_sentiment_donut_chart(slide11, x_donut, y_donut, donut_width, donut_heigth, sentiment_counts)
+                    create_sentiment_donut_chart(slide11, x_donut, y_donut, donut_width, donut_heigth, sentiment_counts, graph_color=graph_color)
 
                     # Stacked progress bar chart for sentiment by day
                     # Position stacked bar chart in bottom half, full width
@@ -2601,7 +2602,7 @@ def create_ppt(data_frames, output_path, start_date, end_date, company_name, com
                         
                         # Apply formatting and colors
                         try:
-                            apply_chart_formatting(chart, title="Günlük sentiment dağılımı")
+                            apply_chart_formatting(chart, title="Günlük sentiment dağılımı", graph_color=graph_color)
                             apply_sentiment_colors(chart)
                         except Exception as e:
                             print(f"Error applying chart formatting: {e}")
@@ -2632,8 +2633,8 @@ def create_ppt(data_frames, output_path, start_date, end_date, company_name, com
             if shape.has_text_frame:
                 sp = shape._element
                 sp.getparent().remove(sp)
-        add_slide_header(slide12, company_logo_path, start_date, end_date, "Sosial media postlarının analizi")
-        add_side_line(slide12)
+        add_slide_header(slide12, company_logo_path, start_date, end_date, "Sosial media postlarının analizi", title_color, template_color)
+        add_side_line(slide12, template_color)
 
         # Layout constants
         header_height = Inches(0.8)
@@ -2839,7 +2840,7 @@ def create_ppt(data_frames, output_path, start_date, end_date, company_name, com
         stick_p.text = "📌"  # Pin/stick emoji
         stick_p.font.size = Pt(24)
         stick_p.alignment = PP_ALIGN.CENTER
-        stick_p.font.color.rgb = HEADER_TEXT_COLOR
+        stick_p.font.color.rgb = graph_color
 
         # Clue text (adjusted for better positioning)
         clue_text = slide12.shapes.add_textbox(
@@ -2856,7 +2857,7 @@ def create_ppt(data_frames, output_path, start_date, end_date, company_name, com
         clue_p = clue_tf.paragraphs[0]
         clue_p.text = "Şəkillərə klikləyərək orijinal postları görə bilərsiniz"
         clue_p.font.size = Pt(16)
-        clue_p.font.color.rgb = HEADER_TEXT_COLOR
+        clue_p.font.color.rgb = graph_color
         clue_p.alignment = PP_ALIGN.CENTER
 
         # endregion

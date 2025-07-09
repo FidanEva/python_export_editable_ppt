@@ -24,6 +24,11 @@ function UploadForm() {
     neuroTime: null,
     competitors: []
   });
+  const [colors, setColors] = useState({
+    template: null,
+    title: null,
+    graph: null,
+  });
 
   const handleExcelChange = (file, type) => {
     if (file) {
@@ -55,6 +60,14 @@ function UploadForm() {
     }
   };
 
+  const handleColorChange = (color, type) => {
+    if (color) {
+      setColors(prev => ({
+        ...prev,
+        [type]: color
+      }));
+    }
+  };
   const addCompetitorLogo = () => {
     if (logos.competitors.length < 25) {
       setLogos(prev => ({
@@ -150,6 +163,12 @@ function UploadForm() {
       return;
     }
 
+    if (!colors.template || !colors.title || !colors.graph) {
+      setError("Please set all required colors");
+      setLoading(false);
+      return;
+    }
+
     try {
       const formData = new FormData();
       
@@ -197,6 +216,10 @@ function UploadForm() {
       formData.append("end_date", endDate);
       formData.append("company_name", companyName);
       formData.append("has_competitors", hasCompetitors);
+
+      formData.append("template_color", colors.template);
+      formData.append("title_color", colors.title);
+      formData.append("graph_color", colors.graph);
       
       const apiUrl = process.env.REACT_APP_API_URL;
       const response = await axios.post(`${apiUrl}/generate-ppt/`,
@@ -309,6 +332,11 @@ function UploadForm() {
         }
         .section {
           margin-bottom: 30px;
+        }
+        .color-inputs {
+          display: flex;
+          gap: 20px;
+          flex-wrap: wrap;
         }
         .link-list,
         .post-list {
@@ -563,6 +591,39 @@ function UploadForm() {
           />
         </div>
 
+        {/* Color Settings Section */}
+        <div className="section">
+          <h3>Color Settings</h3>
+          <div className="color-inputs">
+            <div>
+              <label>Template Color:</label>
+              <input
+                type="color"
+                value={colors.template || "#ffffff"}
+                onChange={(e) => handleColorChange(e.target.value, "template")}
+                required
+              />
+            </div>
+            <div>
+              <label>Title Color:</label>
+              <input
+                type="color"
+                value={colors.title || "#000000"}
+                onChange={(e) => handleColorChange(e.target.value, "title")}
+                required
+              />
+            </div>
+            <div>
+              <label>Graph Color:</label>
+              <input
+                type="color"
+                value={colors.graph || "#ff0000"}
+                onChange={(e) => handleColorChange(e.target.value, "graph")}
+                required
+              />
+            </div>
+          </div>
+        </div>
         {/* Positive Links Section */}
         <div className="section">
           <label>Positive Links:</label>
