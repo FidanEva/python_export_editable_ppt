@@ -52,7 +52,10 @@ async def generate_ppt(
     start_date: str = Form(...),
     end_date: str = Form(...),
     company_name: str = Form(...),
-    has_competitors: bool = Form(True)
+    has_competitors: bool = Form(True),
+    template_color: str = Form(...),
+    title_color: str = Form(...),
+    graph_color: str = Form(... )
 ):
     temp_files = []  # Keep track of all temporary files
     try:
@@ -161,7 +164,10 @@ async def generate_ppt(
             negative_links=negative_links_list,
             positive_posts=positive_posts,
             negative_posts=negative_posts,
-            has_competitors=has_competitors
+            has_competitors=has_competitors,
+            template_color=template_color,
+            title_color=title_color,
+            graph_color=graph_color
         )
 
         # Create a copy of the output file for response
